@@ -1,0 +1,18 @@
+services:
+  forgejo-mcp:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - FORGEJO_URL=${FORGEJO_URL}
+      - FORGEJO_TOKEN=${FORGEJO_TOKEN}
+      - FORGEJO_MCP_API_KEY=${FORGEJO_MCP_API_KEY}
+      - PORT=3000
+      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_WINDOW_MS=60000
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
