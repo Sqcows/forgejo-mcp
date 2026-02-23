@@ -202,5 +202,18 @@ describe("Repository Tools", () => {
       expect(result.content[0].text).toContain("Error:");
       expect(result.content[0].text).toContain("Network error");
     });
+
+    it("update_repo_topics returns valid response for 204 No Content", async () => {
+      (client.put as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["update_repo_topics"].handler;
+      const result = await handler({ owner: "user", repo: "repo", topics: ["mcp", "forgejo"] });
+
+      expect(result.content).toBeDefined();
+      expect(result.content[0].type).toBe("text");
+      expect(typeof result.content[0].text).toBe("string");
+      expect(result.content[0].text).toBe("Success");
+    });
   });
 });

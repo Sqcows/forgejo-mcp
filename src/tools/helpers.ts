@@ -11,7 +11,7 @@ export function formatResponse(data: unknown): { content: Array<{ type: "text"; 
     content: [
       {
         type: "text" as const,
-        text: typeof data === "string" ? data : JSON.stringify(data, null, 2),
+        text: data == null ? "Success" : typeof data === "string" ? data : JSON.stringify(data, null, 2),
       },
     ],
   };
