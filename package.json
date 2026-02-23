@@ -1,5 +1,5 @@
 {
-  "name": "forgejo-mcp",
+  "name": "@ric_/forgejo-mcp",
   "version": "0.1.0",
   "description": "A Model Context Protocol (MCP) server for Forgejo and Gitea instances. Provides 102 tools across repos, issues, PRs, orgs, users, and admin APIs. Works with Claude, Cursor, and any MCP-compatible client. Supports stdio and HTTP transports. Built with Claude Code.",
   "type": "module",
@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/richardharvey/forgejo-mcp"
+    "url": "https://code.squarecows.com/SquareCows/forgejo-mcp"
   },
   "bin": {
-    "forgejo-mcp": "./dist/index.js",
-    "forgejo-mcp-http": "./dist/http.js"
+    "forgejo-mcp": "dist/index.js",
+    "forgejo-mcp-http": "dist/http.js"
   },
   "files": [
     "dist"

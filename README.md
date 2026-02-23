@@ -20,12 +20,12 @@ A Model Context Protocol (MCP) server for [Forgejo](https://forgejo.org/) and [G
 ### Installation
 
 ```bash
-npm install -g forgejo-mcp
+npm install -g @ric_/forgejo-mcp
 ```
 
 Or run directly:
 ```bash
-npx forgejo-mcp
+npx @ric_/forgejo-mcp
 ```
 
 ### Configuration
@@ -38,7 +38,7 @@ export FORGEJO_TOKEN=your-api-token
 
 Or pass as CLI args:
 ```bash
-forgejo-mcp --url https://your-instance.com --token your-token
+npx @ric_/forgejo-mcp --url https://your-instance.com --token your-token
 ```
 
 ## Usage
@@ -50,7 +50,7 @@ Add to your Claude Code MCP config:
   "mcpServers": {
     "forgejo": {
       "command": "npx",
-      "args": ["forgejo-mcp"],
+      "args": ["@ric_/forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://your-instance.com",
         "FORGEJO_TOKEN": "your-token"
@@ -67,7 +67,7 @@ Add to claude_desktop_config.json:
   "mcpServers": {
     "forgejo": {
       "command": "npx",
-      "args": ["forgejo-mcp"],
+      "args": ["@ric_/forgejo-mcp"],
       "env": {
         "FORGEJO_URL": "https://your-instance.com",
         "FORGEJO_TOKEN": "your-token"
@@ -83,7 +83,7 @@ For remote/shared access:
 FORGEJO_URL=https://your-instance.com \
 FORGEJO_TOKEN=your-token \
 FORGEJO_MCP_API_KEY=your-secret-api-key \
-npx forgejo-mcp-http --port 3000
+npx @ric_/forgejo-mcp-http --port 3000
 ```
 Endpoint: `http://localhost:3000/mcp`
 
@@ -94,14 +94,23 @@ Endpoint: `http://localhost:3000/mcp`
 - `RATE_LIMIT_WINDOW_MS` - window size in milliseconds (default: 60000)
 
 ### Docker
+Pull from Docker Hub:
 ```bash
-# Build and run with docker-compose
+docker run -p 3000:3000 \
+  -e FORGEJO_URL=https://your-instance.com \
+  -e FORGEJO_TOKEN=your-token \
+  -e FORGEJO_MCP_API_KEY=your-secret-key \
+  richarvey/forgejo-mcp
+```
+
+Or use docker-compose:
+```bash
 cp .env.example .env
 # Edit .env with your values, then:
 docker compose up -d
 ```
 
-Or build and run directly:
+Or build from source:
 ```bash
 docker build -t forgejo-mcp .
 docker run -p 3000:3000 \
@@ -276,7 +285,7 @@ The Docker image:
 ## Development
 
 ```bash
-git clone https://github.com/your-username/forgejo-mcp.git
+git clone https://code.squarecows.com/SquareCows/forgejo-mcp.git
 cd forgejo-mcp
 npm install
 npm run dev          # stdio mode
