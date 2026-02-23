@@ -550,7 +550,44 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     }
   );
 
-  // 24. transfer_repo
+  // 24. edit_repo
+  server.tool(
+    "edit_repo",
+    "Edit a repository's settings",
+    {
+      owner: zOwner,
+      repo: zRepo,
+      name: zTitle.optional().describe("New name for the repository"),
+      description: zBody.optional(),
+      website: z.string().max(1024).optional().describe("Website URL for the repository"),
+      default_branch: zBranch.optional(),
+      private: z.boolean().optional().describe("Whether the repository is private"),
+      archived: z.boolean().optional().describe("Whether the repository is archived"),
+      has_issues: z.boolean().optional().describe("Whether the issue tracker is enabled"),
+      has_pull_requests: z.boolean().optional().describe("Whether pull requests are enabled"),
+      has_wiki: z.boolean().optional().describe("Whether the wiki is enabled"),
+      has_projects: z.boolean().optional().describe("Whether projects are enabled"),
+      has_releases: z.boolean().optional().describe("Whether releases are enabled"),
+      has_packages: z.boolean().optional().describe("Whether packages are enabled"),
+      has_actions: z.boolean().optional().describe("Whether actions are enabled"),
+      allow_merge_commits: z.boolean().optional().describe("Allow merge commits"),
+      allow_rebase: z.boolean().optional().describe("Allow rebase merges"),
+      allow_rebase_explicit: z.boolean().optional().describe("Allow rebase with merge commits"),
+      allow_squash_merge: z.boolean().optional().describe("Allow squash merges"),
+      ignore_whitespace_conflicts: z.boolean().optional().describe("Ignore whitespace in conflicts"),
+    },
+    async (params) => {
+      try {
+        const { owner, repo, ...body } = params;
+        const data = await client.patch(`/repos/${owner}/${repo}`, body);
+        return formatResponse(data);
+      } catch (err) {
+        return formatError(err);
+      }
+    }
+  );
+
+  // 25. transfer_repo
   server.tool(
     "transfer_repo",
     "Transfer a repository to a new owner",

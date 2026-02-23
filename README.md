@@ -3,7 +3,7 @@
 A Model Context Protocol (MCP) server for [Forgejo](https://forgejo.org/) and [Gitea](https://gitea.com/) instances. Enables AI assistants like Claude, Cursor, and other MCP-compatible tools to interact with your Forgejo/Gitea repositories, issues, pull requests, and more.
 
 ## Features
-- Comprehensive API coverage (102 tools across 6 categories)
+- Comprehensive API coverage (103 tools across 6 categories)
 - Configurable base URL - works with any Forgejo or Gitea instance
 - Both stdio and HTTP transport modes
 - Token-based authentication with optional HTTP Bearer auth

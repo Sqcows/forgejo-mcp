@@ -52,6 +52,7 @@ describe("Repository Tools", () => {
       "list_forks",
       "list_collaborators",
       "add_collaborator",
+      "edit_repo",
       "transfer_repo",
     ];
 
@@ -60,13 +61,13 @@ describe("Repository Tools", () => {
     }
   });
 
-  it("registers exactly 24 repository tools", () => {
+  it("registers exactly 25 repository tools", () => {
     const server = new McpServer({ name: "test", version: "0.0.1" });
     const client = createMockClient();
     registerRepositoryTools(server, client);
 
     const tools = (server as any)._registeredTools;
-    expect(Object.keys(tools).length).toBe(24);
+    expect(Object.keys(tools).length).toBe(25);
   });
 
   describe("tool handler behavior", () => {
@@ -201,6 +202,26 @@ describe("Repository Tools", () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Error:");
       expect(result.content[0].text).toContain("Network error");
+    });
+
+    it("edit_repo calls client.patch with correct path and body", async () => {
+      (client.patch as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 1 });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["edit_repo"].handler;
+      await handler({
+        owner: "user",
+        repo: "repo",
+        has_pull_requests: true,
+        has_issues: false,
+        description: "Updated desc",
+      });
+
+      expect(client.patch).toHaveBeenCalledWith("/repos/user/repo", {
+        has_pull_requests: true,
+        has_issues: false,
+        description: "Updated desc",
+      });
     });
 
     it("update_repo_topics returns valid response for 204 No Content", async () => {

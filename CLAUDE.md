@@ -16,7 +16,7 @@ npm run lint           # ESLint
 
 ## Architecture
 
-This is an MCP (Model Context Protocol) server for Forgejo/Gitea instances, providing 102 tools across 6 categories. It has two transport modes: stdio (for Claude Code/Desktop) and HTTP (for remote access).
+This is an MCP (Model Context Protocol) server for Forgejo/Gitea instances, providing 103 tools across 6 categories. It has two transport modes: stdio (for Claude Code/Desktop) and HTTP (for remote access).
 
 ### Request Flow
 
