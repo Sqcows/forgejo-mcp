@@ -476,7 +476,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.patch(`/repos/${params.owner}/${params.repo}/topics`, {
+        const data = await client.put(`/repos/${params.owner}/${params.repo}/topics`, {
           topics: params.topics,
         });
         return formatResponse(data);
@@ -539,7 +539,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.patch(
+        const data = await client.put(
           `/repos/${params.owner}/${params.repo}/collaborators/${params.collaborator}`,
           { permission: params.permission }
         );
