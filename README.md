@@ -272,7 +272,7 @@ The Docker image:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `FORGEJO_URL` | Yes | Base URL of your Forgejo/Gitea instance |
-| `FORGEJO_TOKEN` | Yes | API token ([generate here]({your-instance}/user/settings/applications)) |
+| `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication |
 | `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 100) |
 | `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
@@ -315,8 +315,8 @@ This MCP server works with:
 
 ## Contributing
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions welcome! Please see [CONTRIBUTING.md](https://code.squarecows.com/SquareCows/forgejo-mcp/src/branch/main/CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT - see [LICENSE](LICENSE)
+MIT - see [LICENSE](https://code.squarecows.com/SquareCows/forgejo-mcp/src/branch/main/LICENSE)
