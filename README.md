@@ -44,7 +44,16 @@ npx @ric_/forgejo-mcp --url https://your-instance.com --token your-token
 ## Usage
 
 ### With Claude Code
-Add to your Claude Code MCP config:
+You can add the MCP server using the CLI:
+```bash
+claude mcp add-json forgejo '{"command":"npx","args":["@ric_/forgejo-mcp"],"env":{"FORGEJO_URL":"https://your-instance.com","FORGEJO_TOKEN":"your-token"}}'
+```
+
+Or manually edit the config file:
+- **Project scope** (shared with team): `.mcp.json` in your project root
+- **User scope** (personal, all projects): `~/.claude.json`
+
+Add the following to the `mcpServers` object:
 ```json
 {
   "mcpServers": {
@@ -59,6 +68,8 @@ Add to your Claude Code MCP config:
   }
 }
 ```
+
+You can verify the server is connected by running `/mcp` inside Claude Code.
 
 ### With Claude Desktop
 Add to claude_desktop_config.json:
