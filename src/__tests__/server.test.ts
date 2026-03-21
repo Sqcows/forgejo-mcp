@@ -75,4 +75,18 @@ describe("createServer", () => {
     expect(tools["admin_create_user"]).toBeDefined();
     expect(tools["get_server_version"]).toBeDefined();
   });
+
+  it("provides server instructions", () => {
+    const server = createServer(dummyConfig);
+    const instructions = (server.server as any)._instructions;
+    expect(instructions).toBeDefined();
+    expect(typeof instructions).toBe("string");
+    expect(instructions).toContain("Forgejo");
+    expect(instructions).toContain("Repository");
+    expect(instructions).toContain("Issues");
+    expect(instructions).toContain("Pull Requests");
+    expect(instructions).toContain("Organizations");
+    expect(instructions).toContain("Users");
+    expect(instructions).toContain("Admin");
+  });
 });
