@@ -322,7 +322,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.patch(
+        const data = await client.put(
           `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
           {
             content: params.content,
