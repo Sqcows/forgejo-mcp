@@ -84,6 +84,32 @@ describe("Organization Tools", () => {
       });
     });
 
+    it("create_team defaults units when none are provided", async () => {
+      (client.post as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 9 });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["create_team"].handler;
+      await handler({ org: "myorg", name: "devs", permission: "write" });
+
+      const [path, body] = (client.post as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(path).toBe("/orgs/myorg/teams");
+      expect(body.name).toBe("devs");
+      expect(Array.isArray(body.units)).toBe(true);
+      expect(body.units.length).toBeGreaterThan(0);
+      expect(body.units).toContain("repo.code");
+    });
+
+    it("create_team respects explicitly provided units", async () => {
+      (client.post as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 10 });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["create_team"].handler;
+      await handler({ org: "myorg", name: "readers", permission: "read", units: ["repo.code"] });
+
+      const [, body] = (client.post as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(body.units).toEqual(["repo.code"]);
+    });
+
     it("add_team_member calls client.put with correct path", async () => {
       const tools = (server as any)._registeredTools;
       const handler = tools["add_team_member"].handler;

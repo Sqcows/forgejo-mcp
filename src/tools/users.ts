@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
 import { formatResponse, formatError } from "./helpers.js";
-import { zOwner, zRepo, zPage, zLimit, zSearchQuery, zState } from "../validation.js";
+import { zOwner, zRepo, zPage, zLimit, zSearchQuery } from "../validation.js";
 
 export function registerUserTools(server: McpServer, client: ForgejoClient): void {
   // 1. get_authenticated_user

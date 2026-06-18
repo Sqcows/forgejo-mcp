@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-06-18
+
+### Fixed
+- Responses with empty bodies (e.g. `merge_pull_request`, `update_pr_branch`) no longer throw `Unexpected end of JSON input`. The operation was succeeding server-side but the tool reported an error. `request()` now reads the body as text and returns `undefined` for empty responses
+- `render_markdown` and `render_markup` no longer throw `Unexpected token '<'`. These endpoints return raw HTML rather than JSON, which is now returned as-is (with a JSON fallback when the content-type header is missing)
+- `create_team` no longer returns `500` when `units` is omitted for read/write teams; it now defaults to the standard repository unit set
+
+### Changed
+- Server version reported during the MCP `initialize` handshake is now read from `package.json` at runtime instead of being hardcoded, so it can no longer drift from the published version
+
+### Internal
+- Added a working ESLint flat config (`eslint.config.js`) with `typescript-eslint`; `npm run lint` was previously non-functional (no config and no TypeScript parser)
+- Removed dead imports surfaced by the linter
+- Added regression tests for empty-body, HTML, and `create_team` units handling
+
 ## [0.1.6] - 2026-06-14
 
 ### Fixed

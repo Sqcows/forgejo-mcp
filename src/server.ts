@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ForgejoClient } from "./client.js";
 import type { ForgejoConfig } from "./config.js";
@@ -7,6 +10,23 @@ import { registerPullRequestTools } from "./tools/pullrequests.js";
 import { registerOrganizationTools } from "./tools/organizations.js";
 import { registerUserTools } from "./tools/users.js";
 import { registerAdminTools } from "./tools/admin.js";
+
+/**
+ * Read the version from package.json at runtime so the server version never
+ * drifts from the published package version. Resolves relative to this module,
+ * which sits one level below the package root both in src/ (tsx) and dist/.
+ */
+function resolveVersion(): string {
+  try {
+    const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf8")) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+const SERVER_VERSION = resolveVersion();
 
 const SERVER_INSTRUCTIONS = `This MCP server connects to a Forgejo (or Gitea) instance and provides tools to interact with its API.
 
@@ -32,7 +52,7 @@ export function createServer(config: ForgejoConfig): McpServer {
   const server = new McpServer(
     {
       name: "forgejo-mcp",
-      version: "0.1.0",
+      version: SERVER_VERSION,
     },
     {
       capabilities: {

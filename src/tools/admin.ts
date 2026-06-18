@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
 import { formatResponse, formatError } from "./helpers.js";
-import { zOwner, zPage, zLimit, zTemplateName, zTitle, zBody, zMarkdownMode } from "../validation.js";
+import { zOwner, zPage, zLimit, zTemplateName, zMarkdownMode } from "../validation.js";
 
 export function registerAdminTools(server: McpServer, client: ForgejoClient): void {
   // ── Admin tools (require admin token) ──────────────────────────────

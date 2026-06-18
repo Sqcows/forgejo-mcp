@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { loadConfig, parseCliArgs, resolveConfig } from "../config.js";
 
 describe("loadConfig", () => {

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run build          # Compile TypeScript to dist/
 npm run dev            # Run stdio server (tsx, no build needed)
 npm run dev:http       # Run HTTP server on port 3000
-npm test               # Run all 114 tests
+npm test               # Run all 123 tests
 npm run test:watch     # Watch mode
 npx vitest run src/__tests__/tools/repository.test.ts  # Run a single test file
 npm run lint           # ESLint

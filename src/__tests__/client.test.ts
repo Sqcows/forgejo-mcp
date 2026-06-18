@@ -15,13 +15,40 @@ function makeClient(baseUrl = "https://forgejo.example.com", token = "test-token
   return new ForgejoClient({ baseUrl, token });
 }
 
+function headers(contentType?: string) {
+  return { get: (name: string) => (name.toLowerCase() === "content-type" ? contentType ?? null : null) };
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,
     statusText: status === 404 ? "Not Found" : "OK",
+    headers: headers("application/json; charset=utf-8"),
     json: () => Promise.resolve(body),
     text: () => Promise.resolve(typeof body === "string" ? body : JSON.stringify(body)),
+  });
+}
+
+/** Mimics endpoints that return a success status with an empty body (e.g. merge, update branch). */
+function emptyBodyResponse(status = 200) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "OK",
+    headers: headers(""),
+    text: () => Promise.resolve(""),
+  });
+}
+
+/** Mimics endpoints that return raw HTML (e.g. render_markdown, render_markup). */
+function htmlResponse(body: string, status = 200) {
+  return Promise.resolve({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "OK",
+    headers: headers("text/html; charset=utf-8"),
+    text: () => Promise.resolve(body),
   });
 }
 
@@ -254,6 +281,48 @@ describe("ForgejoClient", () => {
 
       const result = await client.delete("/repos/owner/repo");
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe("Empty and non-JSON success bodies", () => {
+    it("returns undefined for a 200 with an empty body (e.g. merge_pull_request)", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(emptyBodyResponse(200));
+
+      const result = await client.post("/repos/owner/repo/pulls/1/merge", { Do: "merge" });
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined for a 200 with an empty body (e.g. update_pr_branch)", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(emptyBodyResponse(200));
+
+      const result = await client.post("/repos/owner/repo/pulls/1/update");
+      expect(result).toBeUndefined();
+    });
+
+    it("returns the raw HTML string for text/html responses (e.g. render_markdown)", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(htmlResponse("<h1>Hello</h1>"));
+
+      const result = await client.post("/markdown", { Text: "# Hello" });
+      expect(result).toBe("<h1>Hello</h1>");
+    });
+
+    it("parses JSON even when the content-type header is missing", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: headers(undefined),
+          text: () => Promise.resolve(JSON.stringify({ id: 7 })),
+        })
+      );
+
+      const result = await client.get("/some/path");
+      expect(result).toEqual({ id: 7 });
     });
   });
 

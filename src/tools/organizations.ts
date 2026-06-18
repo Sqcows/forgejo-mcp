@@ -208,11 +208,29 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     },
     async (params) => {
       try {
+        // Forgejo returns a 500 when `units` is omitted for read/write teams,
+        // so fall back to the standard repo unit set when the caller doesn't
+        // specify any. (Owner teams implicitly get all units regardless.)
+        const units =
+          params.units && params.units.length > 0
+            ? params.units
+            : [
+                "repo.code",
+                "repo.issues",
+                "repo.ext_issues",
+                "repo.wiki",
+                "repo.ext_wiki",
+                "repo.pulls",
+                "repo.releases",
+                "repo.projects",
+                "repo.packages",
+                "repo.actions",
+              ];
         const data = await client.post(`/orgs/${params.org}/teams`, {
           name: params.name,
           description: params.description,
           permission: params.permission,
-          units: params.units,
+          units,
         });
         return formatResponse(data);
       } catch (err) {

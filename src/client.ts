@@ -83,7 +83,27 @@ export class ForgejoClient {
       return undefined as T;
     }
 
-    return (await response.json()) as T;
+    // Some endpoints (e.g. merge_pull_request, update_pr_branch) return a
+    // success status with an empty body, and others (render_markdown,
+    // render_markup) return raw HTML rather than JSON. Read the body as text
+    // first so these don't blow up on JSON.parse.
+    const text = await response.text();
+    if (text.length === 0) {
+      return undefined as T;
+    }
+
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      return JSON.parse(text) as T;
+    }
+
+    // Non-JSON body (e.g. rendered HTML). Fall back to JSON in case the server
+    // omitted the content-type, otherwise return the raw text.
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as unknown as T;
+    }
   }
 
   async get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
