@@ -35,6 +35,7 @@ Entry point (index.ts or http.ts)
 - **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
+- **`tools/file-content.ts`** — Encode/decode Contents API base64 so MCP clients send and receive UTF-8 text (GitHub MCP pattern)
 - **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), OAuth 2.1 for browser MCP clients, security headers, `/health` endpoint
 - **`mcp-http.ts`** — Per-session Streamable HTTP handler (new transport on each `initialize`)
 - **`oauth.ts`** — Embedded OAuth 2.1 AS (PKCE, DCR, RFC 8414/9728 metadata, HMAC-signed tokens). Gates `/mcp`; outbound Forgejo calls still use `FORGEJO_TOKEN`.
@@ -91,4 +92,5 @@ Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 - All user-supplied identifiers (owner, repo, branch) are validated against `PATH_SEGMENT_REGEX` to prevent path traversal
 - File paths block `..`, leading `/`, and backslashes
 - Pagination is bounded: page ≥ 1, limit 1–50
+- File content parameters (`create_file`, `update_file`) expect plain UTF-8 text; the server base64-encodes for the Forgejo Contents API. `get_file_contents` decodes text files (`encoding: "utf-8"`) and leaves binary as base64.
 - The `ForgejoApiError` class never includes the full URL in messages to avoid leaking tokens

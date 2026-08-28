@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-08-28
+
+### Changed
+- `create_file` and `update_file` now accept the file body as plain text and base64-encode it before calling the Forgejo Contents API, matching GitHub MCP. Do not pass base64 from the client.
+- `get_file_contents` decodes text files to UTF-8 (`encoding: "utf-8"`). Binary files still return base64 (`encoding: "base64"`).
+- Create/update file responses omit the echoed file body and other Contents API noise; they return path, blob SHA, size, and commit metadata.
+
 ## [0.1.9] - 2026-08-27
 
 ### Fixed

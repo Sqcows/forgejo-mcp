@@ -170,7 +170,7 @@ The Docker image:
 
 ## Auto Setup
 
-When an MCP client (such as Claude Code, Claude Desktop, or Cursor) connects to this server, it automatically receives instructions describing all available tool categories and usage conventions. This means the AI assistant understands how to use the server without any additional prompting — it knows which tools exist, that most require `owner` and `repo` parameters, how pagination works, and that file content should be base64-encoded.
+When an MCP client (such as Claude Code, Claude Desktop, or Cursor) connects to this server, it automatically receives instructions describing all available tool categories and usage conventions. This means the AI assistant understands how to use the server without any additional prompting — it knows which tools exist, that most require `owner` and `repo` parameters, how pagination works, and that file content is plain text (the server handles Forgejo's base64 encoding).
 
 No configuration is needed to enable this; it works out of the box via the MCP `initialize` handshake.
 

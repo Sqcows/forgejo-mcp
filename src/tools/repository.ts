@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
 import { formatResponse, formatError } from "./helpers.js";
+import { encodeFileContent, decodeContentsResponse, slimFileWriteResponse } from "./file-content.js";
 import { zOwner, zRepo, zBranch, zFilePath, zPage, zLimit, zTitle, zBody, zSha, zSearchQuery } from "../validation.js";
 
 export function registerRepositoryTools(server: McpServer, client: ForgejoClient): void {
@@ -256,7 +257,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
   // 12. get_file_contents
   server.tool(
     "get_file_contents",
-    "Get the contents of a file in a repository",
+    "Get the contents of a file in a repository. Text is returned as UTF-8; binary files keep encoding \"base64\". Use the returned sha with update_file or delete_file.",
     {
       owner: zOwner,
       repo: zRepo,
@@ -269,7 +270,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
           `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
           { ref: params.ref }
         );
-        return formatResponse(data);
+        return formatResponse(decodeContentsResponse(data));
       } catch (err) {
         return formatError(err);
       }
@@ -279,12 +280,14 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
   // 13. create_file
   server.tool(
     "create_file",
-    "Create a new file in a repository",
+    "Create a new file in a repository. Pass the file body as plain text; do not base64-encode it.",
     {
       owner: zOwner,
       repo: zRepo,
       filepath: zFilePath,
-      content: z.string().max(10_485_760).describe("Base64 encoded file content"),
+      content: z.string().max(10_485_760).describe(
+        "Content of the file, exactly as it should appear once written. Do not base64-encode it; this server does that before calling the Forgejo API."
+      ),
       message: zTitle.describe("Commit message for creating the file"),
       branch: zBranch.optional(),
       new_branch: zBranch.optional(),
@@ -294,13 +297,13 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
         const data = await client.post(
           `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
           {
-            content: params.content,
+            content: encodeFileContent(params.content),
             message: params.message,
             branch: params.branch,
             new_branch: params.new_branch,
           }
         );
-        return formatResponse(data);
+        return formatResponse(slimFileWriteResponse(data));
       } catch (err) {
         return formatError(err);
       }
@@ -310,12 +313,14 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
   // 14. update_file
   server.tool(
     "update_file",
-    "Update an existing file in a repository",
+    "Update an existing file in a repository. Pass the new file body as plain text; do not base64-encode it.",
     {
       owner: zOwner,
       repo: zRepo,
       filepath: zFilePath,
-      content: z.string().max(10_485_760).describe("Base64 encoded new file content"),
+      content: z.string().max(10_485_760).describe(
+        "Content of the file, exactly as it should appear once written. Do not base64-encode it; this server does that before calling the Forgejo API."
+      ),
       sha: zSha.describe("Blob SHA of the existing file (for conflict detection)"),
       message: zTitle.describe("Commit message for the update"),
       branch: zBranch.optional(),
@@ -325,13 +330,13 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
         const data = await client.put(
           `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
           {
-            content: params.content,
+            content: encodeFileContent(params.content),
             sha: params.sha,
             message: params.message,
             branch: params.branch,
           }
         );
-        return formatResponse(data);
+        return formatResponse(slimFileWriteResponse(data));
       } catch (err) {
         return formatError(err);
       }
