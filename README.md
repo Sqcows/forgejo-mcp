@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server for [Forgejo](https://forgejo.org/) and [G
 - Comprehensive API coverage (103 tools across 6 categories)
 - Configurable base URL - works with any Forgejo or Gitea instance
 - Both stdio and HTTP transport modes
-- Token-based authentication with optional HTTP Bearer auth
+- Token-based authentication with optional HTTP Bearer auth and OAuth 2.1 (Grok Web / custom connectors)
 - Input validation and security hardening (path traversal protection, SSRF prevention, rate limiting)
 - Docker support with security-hardened container
 
@@ -94,11 +94,21 @@ For remote/shared access:
 FORGEJO_URL=https://your-instance.com \
 FORGEJO_TOKEN=your-token \
 FORGEJO_MCP_API_KEY=your-secret-api-key \
+OAUTH_PUBLIC_URL=https://your-public-host.example \
 npx @ric_/forgejo-mcp-http --port 3000
 ```
-Endpoint: `http://localhost:3000/mcp`
+Endpoint: `http://localhost:3000/mcp` (use the public HTTPS URL when connecting from Grok Web).
 
-**Authentication:** Set `FORGEJO_MCP_API_KEY` to require Bearer token authentication on the HTTP endpoint. Clients must include `Authorization: Bearer your-secret-api-key` in requests. If not set, the endpoint is unauthenticated (only suitable for localhost or behind a reverse proxy).
+**Authentication:** Set `FORGEJO_MCP_API_KEY` to require authentication on the HTTP endpoint. Two inbound paths are accepted:
+
+- **Static Bearer** — clients that can set headers (Grok CLI, Claude Code, curl) send `Authorization: Bearer your-secret-api-key`.
+- **OAuth 2.1 + PKCE** — Grok Web and other browser MCP clients discover `/.well-known/oauth-authorization-server`, register a public client, and complete a consent page. The consent password is the same `FORGEJO_MCP_API_KEY`. Outbound Forgejo calls still use `FORGEJO_TOKEN`.
+
+If `FORGEJO_MCP_API_KEY` is not set, the endpoint is unauthenticated (only suitable for localhost or behind a reverse proxy).
+
+Set `OAUTH_PUBLIC_URL` to the public HTTPS origin Grok will call (tunnel or reverse-proxy URL, no trailing slash). If unset, the issuer is derived from `X-Forwarded-Proto` / `X-Forwarded-Host`, then `Host`.
+
+**Grok Web:** [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://your-public-host.example/mcp` → authorize in the browser and enter `FORGEJO_MCP_API_KEY`. The server must be reachable over the public internet (see xAI's custom MCP tunneling docs).
 
 **Rate Limiting:** Enabled by default at 100 requests/minute per IP. Configure via:
 - `RATE_LIMIT_MAX` - max requests per window (default: 100)
@@ -279,7 +289,8 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 |----------|----------|-------------|
 | `FORGEJO_URL` | Yes | Base URL of your Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
-| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication |
+| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication and OAuth consent password |
+| `OAUTH_PUBLIC_URL` | No | Public HTTPS origin advertised in OAuth metadata (e.g. `https://your-tunnel.example`) |
 | `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 100) |
 | `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
 | `PORT` | No | HTTP server port (default: 3000) |
@@ -287,7 +298,7 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 ### Security Features
 - **Input validation** - All parameters validated with Zod schemas (path traversal prevention, regex-validated usernames, bounded pagination, enum enforcement)
 - **SSRF protection** - Base URL validated against cloud metadata endpoints and private IP ranges
-- **HTTP authentication** - Optional Bearer token auth for the HTTP transport
+- **HTTP authentication** - Optional Bearer token auth for the HTTP transport, plus OAuth 2.1 (PKCE, dynamic client registration) for Grok Web and other browser clients
 - **Rate limiting** - Per-IP rate limiting on HTTP endpoints
 - **Token safety** - API tokens never leaked in error messages; URLs sanitized in errors
 - **Security headers** - `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`

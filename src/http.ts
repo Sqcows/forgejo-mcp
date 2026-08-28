@@ -4,6 +4,7 @@ import { createServer as createHttpServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { parseCliArgs, resolveConfig } from "./config.js";
+import { handleOAuthRoutes, isValidBearer, resolveIssuer, writeUnauthorized } from "./oauth.js";
 import { createServer } from "./server.js";
 
 /** Simple in-memory rate limiter per IP */
@@ -83,19 +84,37 @@ async function main() {
       return;
     }
 
-    // Authentication check for MCP endpoints
-    if (url.pathname === "/mcp" && apiKey) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Unauthorized. Provide Bearer token via Authorization header." }));
-        return;
-      }
-    }
-
     // Security headers
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
+
+    const issuer = resolveIssuer(req.headers, process.env.OAUTH_PUBLIC_URL);
+
+    if (apiKey && await handleOAuthRoutes(req, res, url, { secret: apiKey, issuer })) {
+      return;
+    }
+
+    if (url.pathname === "/mcp" && req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, MCP-Protocol-Version, Mcp-Session-Id",
+      });
+      res.end();
+      return;
+    }
+
+    // Authentication check for MCP endpoints
+    if (url.pathname === "/mcp" && apiKey) {
+      const authHeader = req.headers.authorization;
+      const raw = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+      const presented = (raw ?? "").replace(/^Bearer\s+/i, "");
+      if (!isValidBearer(apiKey, presented)) {
+        writeUnauthorized(res, issuer);
+        return;
+      }
+    }
 
     if (url.pathname === "/mcp" && req.method === "POST") {
       await transport.handleRequest(req, res);
@@ -117,7 +136,12 @@ async function main() {
     console.error(`  MCP endpoint: http://localhost:${port}/mcp`);
     console.error(`  Health check: http://localhost:${port}/health`);
     console.error(`  Connected to: ${config.baseUrl}`);
-    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token)" : "DISABLED"}`);
+    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token + OAuth)" : "DISABLED"}`);
+    if (apiKey) {
+      const publicUrl = process.env.OAUTH_PUBLIC_URL?.replace(/\/+$/, "");
+      console.error(`  OAuth issuer: ${publicUrl || "(derived from Host / X-Forwarded-* headers)"}`);
+      console.error(`  OAuth consent password: FORGEJO_MCP_API_KEY`);
+    }
     console.error(`  Rate limiting: ${process.env.RATE_LIMIT_MAX || "100"} req/min per IP`);
   });
 }
