@@ -129,8 +129,8 @@ Do not use `client_secret_post` or `client_secret_basic` — this server is a pu
 
 4. Save & Connect. Grok opens the consent page; enter `FORGEJO_MCP_API_KEY` there.
 
-**Rate Limiting:** Enabled by default at 100 requests/minute per IP. Configure via:
-- `RATE_LIMIT_MAX` - max requests per window (default: 100)
+**Rate Limiting:** Enabled by default at 1000 requests/minute per IP. MCP clients (Grok Web, Claude, Cursor) issue many tool calls per turn — especially file reads — so the previous 100/min cap returned HTTP 429 mid-session. Health checks, CORS preflight, and OAuth discovery are not counted. 429 responses include `Retry-After`. Configure via:
+- `RATE_LIMIT_MAX` - max requests per window (default: 1000; set `0` to disable)
 - `RATE_LIMIT_WINDOW_MS` - window size in milliseconds (default: 60000)
 
 ### Docker
@@ -312,7 +312,7 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 | `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication and OAuth consent password |
 | `OAUTH_PUBLIC_URL` | No | Public HTTPS origin advertised in OAuth metadata (e.g. `https://your-tunnel.example`) |
-| `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 100) |
+| `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 1000; `0` disables) |
 | `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
 | `PORT` | No | HTTP server port (default: 3000) |
 

@@ -4,41 +4,13 @@ import { createServer as createHttpServer } from "node:http";
 import { parseCliArgs, resolveConfig } from "./config.js";
 import { handleOAuthRoutes, isValidBearer, resolveIssuer, writeUnauthorized } from "./oauth.js";
 import { createMcpSessionHandler } from "./mcp-http.js";
-
-/** Simple in-memory rate limiter per IP */
-class RateLimiter {
-  private requests = new Map<string, { count: number; resetAt: number }>();
-  private maxRequests: number;
-  private windowMs: number;
-
-  constructor(maxRequests = 100, windowMs = 60_000) {
-    this.maxRequests = maxRequests;
-    this.windowMs = windowMs;
-  }
-
-  isAllowed(ip: string): boolean {
-    const now = Date.now();
-    const entry = this.requests.get(ip);
-
-    if (!entry || now > entry.resetAt) {
-      this.requests.set(ip, { count: 1, resetAt: now + this.windowMs });
-      return true;
-    }
-
-    entry.count++;
-    return entry.count <= this.maxRequests;
-  }
-
-  /** Periodically clean up expired entries */
-  cleanup(): void {
-    const now = Date.now();
-    for (const [ip, entry] of this.requests) {
-      if (now > entry.resetAt) {
-        this.requests.delete(ip);
-      }
-    }
-  }
-}
+import {
+  RateLimiter,
+  parseRateLimitInt,
+  skipHttpRateLimit,
+  DEFAULT_RATE_LIMIT_MAX,
+  DEFAULT_RATE_LIMIT_WINDOW_MS,
+} from "./rate-limit.js";
 
 async function main() {
   const cliArgs = parseCliArgs(process.argv.slice(2));
@@ -57,10 +29,12 @@ async function main() {
   }
 
   const mcpHandler = createMcpSessionHandler(config);
-  const rateLimiter = new RateLimiter(
-    parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
-    parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10)
-  );
+  const rateLimitMax = parseRateLimitInt(process.env.RATE_LIMIT_MAX, DEFAULT_RATE_LIMIT_MAX);
+  const rateLimitWindowMs = parseRateLimitInt(
+    process.env.RATE_LIMIT_WINDOW_MS,
+    DEFAULT_RATE_LIMIT_WINDOW_MS
+  ) || DEFAULT_RATE_LIMIT_WINDOW_MS;
+  const rateLimiter = new RateLimiter(rateLimitMax, rateLimitWindowMs);
 
   // Cleanup rate limiter every 5 minutes
   setInterval(() => rateLimiter.cleanup(), 300_000).unref();
@@ -69,11 +43,17 @@ async function main() {
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const clientIp = req.socket.remoteAddress || "unknown";
 
-    // Rate limiting
-    if (!rateLimiter.isAllowed(clientIp)) {
-      res.writeHead(429, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Too many requests" }));
-      return;
+    // Rate limiting (skip health, CORS preflight, OAuth discovery)
+    if (!skipHttpRateLimit(req.method || "GET", url.pathname)) {
+      const limit = rateLimiter.isAllowed(clientIp);
+      if (!limit.allowed) {
+        res.writeHead(429, {
+          "Content-Type": "application/json",
+          "Retry-After": String(limit.retryAfterSec),
+        });
+        res.end(JSON.stringify({ error: "Too many requests", retry_after: limit.retryAfterSec }));
+        return;
+      }
     }
 
     // Security headers
@@ -131,7 +111,11 @@ async function main() {
       console.error(`  OAuth issuer: ${publicUrl || "(derived from Host / X-Forwarded-* headers)"}`);
       console.error(`  OAuth consent password: FORGEJO_MCP_API_KEY`);
     }
-    console.error(`  Rate limiting: ${process.env.RATE_LIMIT_MAX || "100"} req/min per IP`);
+    console.error(
+      rateLimitMax === 0
+        ? "  Rate limiting: disabled"
+        : `  Rate limiting: ${rateLimitMax} requests per ${rateLimitWindowMs}ms per IP`
+    );
   });
 }
 

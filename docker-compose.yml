@@ -10,7 +10,7 @@ services:
       - FORGEJO_MCP_API_KEY=${FORGEJO_MCP_API_KEY}
       - OAUTH_PUBLIC_URL=${OAUTH_PUBLIC_URL:-}
       - PORT=3000
-      - RATE_LIMIT_MAX=100
+      - RATE_LIMIT_MAX=1000
       - RATE_LIMIT_WINDOW_MS=60000
     restart: unless-stopped
     read_only: true

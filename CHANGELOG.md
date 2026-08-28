@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.0] - 2026-08-28
 
+### Fixed
+- HTTP rate limit default raised from 100 to 1000 requests/minute so Grok Web and other MCP clients can issue a burst of `get_file_contents` (and other tool) calls without HTTP 429. Health, CORS preflight, and OAuth discovery no longer consume the budget. 429 responses include `Retry-After`. Set `RATE_LIMIT_MAX=0` to disable.
+
 ### Changed
 - `create_file` and `update_file` now accept the file body as plain text and base64-encode it before calling the Forgejo Contents API, matching GitHub MCP. Do not pass base64 from the client.
 - `get_file_contents` decodes text files to UTF-8 (`encoding: "utf-8"`). Binary files still return base64 (`encoding: "base64"`).
