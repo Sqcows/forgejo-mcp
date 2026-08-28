@@ -37,7 +37,7 @@ Entry point (index.ts or http.ts)
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
 - **`tools/file-content.ts`** — Encode/decode Contents API base64 so MCP clients send and receive UTF-8 text (GitHub MCP pattern)
 - **`http.ts`** — HTTP transport with optional Bearer auth (`FORGEJO_MCP_API_KEY`), OAuth 2.1 for browser MCP clients, security headers, `/health` endpoint
-- **`rate-limit.ts`** — Per-IP fixed-window limiter (default 1000/min). Health, CORS preflight, and OAuth discovery are exempt; 429 includes `Retry-After`.
+- **`rate-limit.ts`** — Per-IP token bucket (burst 50, 1000/min) plus a separate initialize handshake bucket (24/10s). Health, CORS preflight, and OAuth discovery are exempt; 429 includes `Retry-After`.
 - **`mcp-http.ts`** — Per-session Streamable HTTP handler (new transport on each `initialize`)
 - **`oauth.ts`** — Embedded OAuth 2.1 AS (PKCE, DCR, RFC 8414/9728 metadata, HMAC-signed tokens). Gates `/mcp`; outbound Forgejo calls still use `FORGEJO_TOKEN`.
 
@@ -83,8 +83,10 @@ Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth and OAuth consent password |
 | `OAUTH_PUBLIC_URL` | No | Public HTTPS origin for OAuth metadata (tunnel / reverse proxy) |
 | `PORT` | No | HTTP port (default: 3000) |
-| `RATE_LIMIT_MAX` | No | Requests per window (default: 1000; `0` disables) |
-| `RATE_LIMIT_WINDOW_MS` | No | Window in ms (default: 60000) |
+| `RATE_LIMIT_MAX` | No | RPC refill per window (default: 1000; `0` disables) |
+| `RATE_LIMIT_WINDOW_MS` | No | RPC window in ms (default: 60000) |
+| `RATE_LIMIT_BURST` | No | Instant RPC burst (default: 50) |
+| `RATE_LIMIT_HANDSHAKE_BURST` | No | `initialize` burst (default: 24 per 10s) |
 
 ## Conventions
 

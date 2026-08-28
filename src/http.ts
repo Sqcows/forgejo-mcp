@@ -1,16 +1,26 @@
 #!/usr/bin/env node
 
-import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpServer, type IncomingMessage } from "node:http";
 import { parseCliArgs, resolveConfig } from "./config.js";
 import { handleOAuthRoutes, isValidBearer, resolveIssuer, writeUnauthorized } from "./oauth.js";
 import { createMcpSessionHandler } from "./mcp-http.js";
 import {
   RateLimiter,
   parseRateLimitInt,
-  skipHttpRateLimit,
+  classifyHttpRateLimit,
   DEFAULT_RATE_LIMIT_MAX,
   DEFAULT_RATE_LIMIT_WINDOW_MS,
+  DEFAULT_RATE_LIMIT_BURST,
+  DEFAULT_HANDSHAKE_BURST,
+  DEFAULT_HANDSHAKE_WINDOW_MS,
 } from "./rate-limit.js";
+
+function headerValue(req: IncomingMessage, name: string): string | undefined {
+  const raw = req.headers[name];
+  if (!raw) return undefined;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value || undefined;
+}
 
 async function main() {
   const cliArgs = parseCliArgs(process.argv.slice(2));
@@ -34,18 +44,35 @@ async function main() {
     process.env.RATE_LIMIT_WINDOW_MS,
     DEFAULT_RATE_LIMIT_WINDOW_MS
   ) || DEFAULT_RATE_LIMIT_WINDOW_MS;
-  const rateLimiter = new RateLimiter(rateLimitMax, rateLimitWindowMs);
+  const rateLimitBurst =
+    parseRateLimitInt(process.env.RATE_LIMIT_BURST, DEFAULT_RATE_LIMIT_BURST) || DEFAULT_RATE_LIMIT_BURST;
+  const handshakeBurst =
+    parseRateLimitInt(process.env.RATE_LIMIT_HANDSHAKE_BURST, DEFAULT_HANDSHAKE_BURST) ||
+    DEFAULT_HANDSHAKE_BURST;
+  const handshakeWindowMs =
+    parseRateLimitInt(process.env.RATE_LIMIT_HANDSHAKE_WINDOW_MS, DEFAULT_HANDSHAKE_WINDOW_MS) ||
+    DEFAULT_HANDSHAKE_WINDOW_MS;
+  const rpcLimiter = new RateLimiter(rateLimitMax, rateLimitWindowMs, rateLimitBurst);
+  // Separate bucket so parallel Grok Web initialize POSTs cannot 429 the RPC budget.
+  const handshakeLimiter = new RateLimiter(handshakeBurst, handshakeWindowMs, handshakeBurst);
 
   // Cleanup rate limiter every 5 minutes
-  setInterval(() => rateLimiter.cleanup(), 300_000).unref();
+  setInterval(() => {
+    rpcLimiter.cleanup();
+    handshakeLimiter.cleanup();
+  }, 300_000).unref();
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const clientIp = req.socket.remoteAddress || "unknown";
+    const sessionId = headerValue(req, "mcp-session-id");
+    const kind = classifyHttpRateLimit(req.method || "GET", url.pathname, sessionId);
 
-    // Rate limiting (skip health, CORS preflight, OAuth discovery)
-    if (!skipHttpRateLimit(req.method || "GET", url.pathname)) {
-      const limit = rateLimiter.isAllowed(clientIp);
+    // Rate limiting: initialize (no session id) uses a short burst bucket so
+    // parallel call_connected_tool handshakes are not a 60s lockout.
+    if (kind !== "skip" && rateLimitMax !== 0) {
+      const limiter = kind === "handshake" ? handshakeLimiter : rpcLimiter;
+      const limit = limiter.isAllowed(clientIp);
       if (!limit.allowed) {
         res.writeHead(429, {
           "Content-Type": "application/json",
@@ -114,7 +141,8 @@ async function main() {
     console.error(
       rateLimitMax === 0
         ? "  Rate limiting: disabled"
-        : `  Rate limiting: ${rateLimitMax} requests per ${rateLimitWindowMs}ms per IP`
+        : `  Rate limiting: ${rateLimitBurst} burst / ${rateLimitMax} per ${rateLimitWindowMs}ms per IP` +
+          `; initialize ${handshakeBurst} per ${handshakeWindowMs}ms`
     );
   });
 }

@@ -129,9 +129,12 @@ Do not use `client_secret_post` or `client_secret_basic` — this server is a pu
 
 4. Save & Connect. Grok opens the consent page; enter `FORGEJO_MCP_API_KEY` there.
 
-**Rate Limiting:** Enabled by default at 1000 requests/minute per IP. MCP clients (Grok Web, Claude, Cursor) issue many tool calls per turn — especially file reads — so the previous 100/min cap returned HTTP 429 mid-session. Health checks, CORS preflight, and OAuth discovery are not counted. 429 responses include `Retry-After`. Configure via:
-- `RATE_LIMIT_MAX` - max requests per window (default: 1000; set `0` to disable)
-- `RATE_LIMIT_WINDOW_MS` - window size in milliseconds (default: 60000)
+**Rate Limiting:** Token bucket per IP (default burst 50, refill 1000/min). MCP `initialize` is a separate handshake bucket (24 per 10s) because Grok Web opens a new Streamable HTTP session per tool call — a parallel batch of `call_connected_tool` is several handshakes, not several file reads. A 429's `Retry-After` is the time to refill one token (~1s), not the rest of the minute. Health checks, CORS preflight, and OAuth discovery are not counted. Configure via:
+- `RATE_LIMIT_MAX` - RPC refill per window (default: 1000; set `0` to disable)
+- `RATE_LIMIT_WINDOW_MS` - RPC window in milliseconds (default: 60000)
+- `RATE_LIMIT_BURST` - instant RPC burst (default: 50)
+- `RATE_LIMIT_HANDSHAKE_BURST` - `initialize` burst (default: 24)
+- `RATE_LIMIT_HANDSHAKE_WINDOW_MS` - handshake window (default: 10000)
 
 ### Docker
 Pull from Docker Hub:
@@ -312,8 +315,10 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 | `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication and OAuth consent password |
 | `OAUTH_PUBLIC_URL` | No | Public HTTPS origin advertised in OAuth metadata (e.g. `https://your-tunnel.example`) |
-| `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 1000; `0` disables) |
-| `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
+| `RATE_LIMIT_MAX` | No | RPC refill per window (default: 1000; `0` disables) |
+| `RATE_LIMIT_WINDOW_MS` | No | RPC window in ms (default: 60000) |
+| `RATE_LIMIT_BURST` | No | Instant RPC burst (default: 50) |
+| `RATE_LIMIT_HANDSHAKE_BURST` | No | `initialize` burst (default: 24 per 10s) |
 | `PORT` | No | HTTP server port (default: 3000) |
 
 ### Security Features
