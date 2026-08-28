@@ -44,7 +44,8 @@ const SERVER_INSTRUCTIONS = `This MCP server connects to a Forgejo (or Gitea) in
 - Most tools require \`owner\` and \`repo\` parameters to identify a repository.
 - List endpoints support pagination with \`page\` (starting at 1) and \`limit\` (1–50) parameters.
 - Tool names use snake_case with a domain prefix for admin tools (e.g. \`admin_list_users\`).
-- File content parameters (create_file, update_file) expect base64-encoded content.
+- File content parameters (create_file, update_file) expect the file body as plain text, exactly as it should appear in the repository. Do not base64-encode it; the server encodes before calling the Forgejo API.
+- get_file_contents returns decoded UTF-8 for text files (encoding "utf-8") and base64 only for binary files (encoding "base64"). Keep the returned sha for update_file and delete_file.
 - The server returns JSON responses from the Forgejo API, or error messages with HTTP status codes on failure.
 `;
 

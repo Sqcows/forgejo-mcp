@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run build          # Compile TypeScript to dist/
 npm run dev            # Run stdio server (tsx, no build needed)
 npm run dev:http       # Run HTTP server on port 3000
-npm test               # Run all 123 tests
+npm test               # Run all tests
 npm run test:watch     # Watch mode
 npx vitest run src/__tests__/tools/repository.test.ts  # Run a single test file
 npm run lint           # ESLint
@@ -35,7 +35,10 @@ Entry point (index.ts or http.ts)
 - **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
-- **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), security headers, `/health` endpoint
+- **`tools/file-content.ts`** — Encode/decode Contents API base64 so MCP clients send and receive UTF-8 text (GitHub MCP pattern)
+- **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), OAuth 2.1 for browser MCP clients, security headers, `/health` endpoint
+- **`mcp-http.ts`** — Per-session Streamable HTTP handler (new transport on each `initialize`)
+- **`oauth.ts`** — Embedded OAuth 2.1 AS (PKCE, DCR, RFC 8414/9728 metadata, HMAC-signed tokens). Gates `/mcp`; outbound Forgejo calls still use `FORGEJO_TOKEN`.
 
 ### Tool Registration Pattern
 
@@ -76,7 +79,8 @@ Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 |----------|----------|-------------|
 | `FORGEJO_URL` | Yes | Base URL of Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token |
-| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth |
+| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth and OAuth consent password |
+| `OAUTH_PUBLIC_URL` | No | Public HTTPS origin for OAuth metadata (tunnel / reverse proxy) |
 | `PORT` | No | HTTP port (default: 3000) |
 | `RATE_LIMIT_MAX` | No | Requests per window (default: 100) |
 | `RATE_LIMIT_WINDOW_MS` | No | Window in ms (default: 60000) |
@@ -88,4 +92,5 @@ Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 - All user-supplied identifiers (owner, repo, branch) are validated against `PATH_SEGMENT_REGEX` to prevent path traversal
 - File paths block `..`, leading `/`, and backslashes
 - Pagination is bounded: page ≥ 1, limit 1–50
+- File content parameters (`create_file`, `update_file`) expect plain UTF-8 text; the server base64-encodes for the Forgejo Contents API. `get_file_contents` decodes text files (`encoding: "utf-8"`) and leaves binary as base64.
 - The `ForgejoApiError` class never includes the full URL in messages to avoid leaking tokens
