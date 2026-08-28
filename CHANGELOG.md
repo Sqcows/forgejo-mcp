@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - OAuth 2.1 authorization code + PKCE on the HTTP transport so Grok Web custom connectors can authenticate. Discovery (`/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`), dynamic client registration, a password-gated consent page, and refresh-token rotation are included. The static `Authorization: Bearer $FORGEJO_MCP_API_KEY` path still works for CLI clients.
 - `OAUTH_PUBLIC_URL` to advertise the public HTTPS issuer when running behind a tunnel or reverse proxy.
+- README values for Grok Web's OAuth form (client ID `forgejo-mcp`, blank secret, `/oauth/authorize`, `/oauth/token`, scope `mcp`, token auth method none/PKCE).
 
 ## [0.1.7] - 2026-06-18
 

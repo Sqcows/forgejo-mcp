@@ -108,7 +108,26 @@ If `FORGEJO_MCP_API_KEY` is not set, the endpoint is unauthenticated (only suita
 
 Set `OAUTH_PUBLIC_URL` to the public HTTPS origin Grok will call (tunnel or reverse-proxy URL, no trailing slash). If unset, the issuer is derived from `X-Forwarded-Proto` / `X-Forwarded-Host`, then `Host`.
 
-**Grok Web:** [grok.com/connectors](https://grok.com/connectors) → New Connector → Custom → `https://your-public-host.example/mcp` → authorize in the browser and enter `FORGEJO_MCP_API_KEY`. The server must be reachable over the public internet (see xAI's custom MCP tunneling docs).
+#### Grok Web custom connector
+
+The server must be reachable over the public internet (see [xAI's custom MCP tunneling docs](https://docs.x.ai/grok/connectors/custom-mcp-tunneling)). Then:
+
+1. Open [grok.com/connectors](https://grok.com/connectors) → **New Connector** → **Custom**.
+2. **Server URL:** `https://your-public-host.example/mcp` (same origin as `OAUTH_PUBLIC_URL`, plus `/mcp`).
+3. When Grok asks for OAuth credentials, use:
+
+| Field | Value |
+|-------|-------|
+| Client ID | `forgejo-mcp` |
+| Client Secret | leave blank |
+| Authorization Endpoint | `https://your-public-host.example/oauth/authorize` |
+| Token Endpoint | `https://your-public-host.example/oauth/token` |
+| Scopes | `mcp` |
+| Token Auth Method | **none (PKCE)** |
+
+Do not use `client_secret_post` or `client_secret_basic` — this server is a public PKCE client and has no client secret. Authorization and token URLs are the public origin **without** `/mcp`.
+
+4. Save & Connect. Grok opens the consent page; enter `FORGEJO_MCP_API_KEY` there.
 
 **Rate Limiting:** Enabled by default at 100 requests/minute per IP. Configure via:
 - `RATE_LIMIT_MAX` - max requests per window (default: 100)
@@ -121,6 +140,7 @@ docker run -p 3000:3000 \
   -e FORGEJO_URL=https://your-instance.com \
   -e FORGEJO_TOKEN=your-token \
   -e FORGEJO_MCP_API_KEY=your-secret-key \
+  -e OAUTH_PUBLIC_URL=https://your-public-host.example \
   richarvey/forgejo-mcp
 ```
 
@@ -138,6 +158,7 @@ docker run -p 3000:3000 \
   -e FORGEJO_URL=https://your-instance.com \
   -e FORGEJO_TOKEN=your-token \
   -e FORGEJO_MCP_API_KEY=your-secret-key \
+  -e OAUTH_PUBLIC_URL=https://your-public-host.example \
   forgejo-mcp
 ```
 
