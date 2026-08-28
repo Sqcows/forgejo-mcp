@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
 import { createServer as createHttpServer } from "node:http";
-import { randomUUID } from "node:crypto";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { parseCliArgs, resolveConfig } from "./config.js";
-import { createServer } from "./server.js";
+import { handleOAuthRoutes, isValidBearer, resolveIssuer, writeUnauthorized } from "./oauth.js";
+import { createMcpSessionHandler } from "./mcp-http.js";
 
 /** Simple in-memory rate limiter per IP */
 class RateLimiter {
@@ -57,7 +56,7 @@ async function main() {
     );
   }
 
-  const server = createServer(config);
+  const mcpHandler = createMcpSessionHandler(config);
   const rateLimiter = new RateLimiter(
     parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
     parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10)
@@ -65,12 +64,6 @@ async function main() {
 
   // Cleanup rate limiter every 5 minutes
   setInterval(() => rateLimiter.cleanup(), 300_000).unref();
-
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-
-  await server.connect(transport);
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${port}`);
@@ -83,26 +76,41 @@ async function main() {
       return;
     }
 
-    // Authentication check for MCP endpoints
-    if (url.pathname === "/mcp" && apiKey) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Unauthorized. Provide Bearer token via Authorization header." }));
-        return;
-      }
-    }
-
     // Security headers
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
 
-    if (url.pathname === "/mcp" && req.method === "POST") {
-      await transport.handleRequest(req, res);
-    } else if (url.pathname === "/mcp" && req.method === "GET") {
-      await transport.handleRequest(req, res);
-    } else if (url.pathname === "/mcp" && req.method === "DELETE") {
-      await transport.handleRequest(req, res);
+    const issuer = resolveIssuer(req.headers, process.env.OAUTH_PUBLIC_URL);
+
+    if (apiKey && await handleOAuthRoutes(req, res, url, { secret: apiKey, issuer })) {
+      return;
+    }
+
+    if (url.pathname === "/mcp" && req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, MCP-Protocol-Version, Mcp-Session-Id",
+        "Access-Control-Expose-Headers": "Mcp-Session-Id, MCP-Protocol-Version",
+      });
+      res.end();
+      return;
+    }
+
+    // Authentication check for MCP endpoints
+    if (url.pathname === "/mcp" && apiKey) {
+      const authHeader = req.headers.authorization;
+      const raw = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+      const presented = (raw ?? "").replace(/^Bearer\s+/i, "");
+      if (!isValidBearer(apiKey, presented)) {
+        writeUnauthorized(res, issuer);
+        return;
+      }
+    }
+
+    if (url.pathname === "/mcp") {
+      await mcpHandler.handle(req, res);
     } else if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok", version: "0.1.0" }));
@@ -117,7 +125,12 @@ async function main() {
     console.error(`  MCP endpoint: http://localhost:${port}/mcp`);
     console.error(`  Health check: http://localhost:${port}/health`);
     console.error(`  Connected to: ${config.baseUrl}`);
-    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token)" : "DISABLED"}`);
+    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token + OAuth)" : "DISABLED"}`);
+    if (apiKey) {
+      const publicUrl = process.env.OAUTH_PUBLIC_URL?.replace(/\/+$/, "");
+      console.error(`  OAuth issuer: ${publicUrl || "(derived from Host / X-Forwarded-* headers)"}`);
+      console.error(`  OAuth consent password: FORGEJO_MCP_API_KEY`);
+    }
     console.error(`  Rate limiting: ${process.env.RATE_LIMIT_MAX || "100"} req/min per IP`);
   });
 }
