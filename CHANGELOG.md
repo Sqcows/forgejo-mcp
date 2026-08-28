@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-08-27
+
+### Fixed
+- HTTP transport no longer returns JSON-RPC `-32600 Server already initialized` on Grok Web's second `initialize`. Each MCP session gets its own Streamable HTTP transport; a later initialize starts a new session instead of reusing the process-wide one.
+
 ## [0.1.8] - 2026-08-27
 
 ### Added

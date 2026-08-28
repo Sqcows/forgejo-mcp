@@ -36,6 +36,7 @@ Entry point (index.ts or http.ts)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
 - **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), OAuth 2.1 for browser MCP clients, security headers, `/health` endpoint
+- **`mcp-http.ts`** — Per-session Streamable HTTP handler (new transport on each `initialize`)
 - **`oauth.ts`** — Embedded OAuth 2.1 AS (PKCE, DCR, RFC 8414/9728 metadata, HMAC-signed tokens). Gates `/mcp`; outbound Forgejo calls still use `FORGEJO_TOKEN`.
 
 ### Tool Registration Pattern
