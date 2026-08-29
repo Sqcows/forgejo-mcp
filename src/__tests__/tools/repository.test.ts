@@ -123,6 +123,96 @@ describe("Repository Tools", () => {
       );
     });
 
+    it("get_file_contents returns decoded utf-8 text and sha", async () => {
+      (client.get as ReturnType<typeof vi.fn>).mockResolvedValue({
+        name: "README.md",
+        path: "README.md",
+        sha: "abc123",
+        type: "file",
+        size: 5,
+        encoding: "base64",
+        content: "aGVsbG8=",
+      });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["get_file_contents"].handler;
+      const result = await handler({ owner: "user", repo: "repo", filepath: "README.md" });
+
+      expect(result.content[0].text).toContain('"hello"');
+      expect(result.content[0].text).toContain('"utf-8"');
+      expect(result.content[0].text).toContain('"sha": "abc123"');
+      expect(result.content[0].text).not.toContain("aGVsbG8=");
+    });
+
+    it("create_file base64-encodes plain text before calling the API", async () => {
+      (client.post as ReturnType<typeof vi.fn>).mockResolvedValue({
+        content: {
+          name: "README.md",
+          path: "README.md",
+          sha: "abc123",
+          size: 5,
+          encoding: "base64",
+          content: "aGVsbG8=",
+          html_url: "https://example.com/README.md",
+        },
+        commit: { sha: "def456", message: "add readme", html_url: "https://example.com/c" },
+      });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["create_file"].handler;
+      const result = await handler({
+        owner: "user",
+        repo: "repo",
+        filepath: "README.md",
+        content: "hello",
+        message: "add readme",
+      });
+
+      expect(client.post).toHaveBeenCalledWith("/repos/user/repo/contents/README.md", {
+        content: "aGVsbG8=",
+        message: "add readme",
+        branch: undefined,
+        new_branch: undefined,
+      });
+      expect(result.content[0].text).toContain('"sha": "abc123"');
+      expect(result.content[0].text).not.toContain("aGVsbG8=");
+      expect(result.content[0].text).not.toContain('"encoding"');
+    });
+
+    it("update_file base64-encodes plain text and slims the response", async () => {
+      (client.put as ReturnType<typeof vi.fn>).mockResolvedValue({
+        content: {
+          name: "README.md",
+          path: "README.md",
+          sha: "newsha",
+          size: 11,
+          encoding: "base64",
+          content: "aGVsbG8gd29ybGQ=",
+        },
+        commit: { sha: "c1", message: "update", html_url: "https://example.com/c" },
+      });
+
+      const tools = (server as any)._registeredTools;
+      const handler = tools["update_file"].handler;
+      const result = await handler({
+        owner: "user",
+        repo: "repo",
+        filepath: "README.md",
+        content: "hello world",
+        sha: "oldsha",
+        message: "update",
+      });
+
+      expect(client.put).toHaveBeenCalledWith("/repos/user/repo/contents/README.md", {
+        content: Buffer.from("hello world", "utf8").toString("base64"),
+        sha: "oldsha",
+        message: "update",
+        branch: undefined,
+      });
+      expect(result.content[0].text).toContain('"sha": "newsha"');
+      expect(result.content[0].text).not.toContain("aGVsbG8gd29ybGQ=");
+    });
+
     it("delete_file uses request method with body", async () => {
       (client.request as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 

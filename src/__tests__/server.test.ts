@@ -88,5 +88,8 @@ describe("createServer", () => {
     expect(instructions).toContain("Organizations");
     expect(instructions).toContain("Users");
     expect(instructions).toContain("Admin");
+    expect(instructions).toContain("plain text");
+    expect(instructions).toContain("Do not base64-encode");
+    expect(instructions).not.toContain("expect base64-encoded content");
   });
 });

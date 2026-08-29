@@ -1,5 +1,7 @@
 node_modules/
 dist/
+publish/
+.idea/
 *.tgz
 .env
 .env.*

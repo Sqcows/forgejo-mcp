@@ -1,44 +1,25 @@
 #!/usr/bin/env node
 
-import { createServer as createHttpServer } from "node:http";
-import { randomUUID } from "node:crypto";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createServer as createHttpServer, type IncomingMessage } from "node:http";
 import { parseCliArgs, resolveConfig } from "./config.js";
-import { createServer } from "./server.js";
+import { handleOAuthRoutes, isValidBearer, resolveIssuer, writeUnauthorized } from "./oauth.js";
+import { createMcpSessionHandler } from "./mcp-http.js";
+import {
+  RateLimiter,
+  parseRateLimitInt,
+  classifyHttpRateLimit,
+  DEFAULT_RATE_LIMIT_MAX,
+  DEFAULT_RATE_LIMIT_WINDOW_MS,
+  DEFAULT_RATE_LIMIT_BURST,
+  DEFAULT_HANDSHAKE_BURST,
+  DEFAULT_HANDSHAKE_WINDOW_MS,
+} from "./rate-limit.js";
 
-/** Simple in-memory rate limiter per IP */
-class RateLimiter {
-  private requests = new Map<string, { count: number; resetAt: number }>();
-  private maxRequests: number;
-  private windowMs: number;
-
-  constructor(maxRequests = 100, windowMs = 60_000) {
-    this.maxRequests = maxRequests;
-    this.windowMs = windowMs;
-  }
-
-  isAllowed(ip: string): boolean {
-    const now = Date.now();
-    const entry = this.requests.get(ip);
-
-    if (!entry || now > entry.resetAt) {
-      this.requests.set(ip, { count: 1, resetAt: now + this.windowMs });
-      return true;
-    }
-
-    entry.count++;
-    return entry.count <= this.maxRequests;
-  }
-
-  /** Periodically clean up expired entries */
-  cleanup(): void {
-    const now = Date.now();
-    for (const [ip, entry] of this.requests) {
-      if (now > entry.resetAt) {
-        this.requests.delete(ip);
-      }
-    }
-  }
+function headerValue(req: IncomingMessage, name: string): string | undefined {
+  const raw = req.headers[name];
+  if (!raw) return undefined;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value || undefined;
 }
 
 async function main() {
@@ -57,38 +38,47 @@ async function main() {
     );
   }
 
-  const server = createServer(config);
-  const rateLimiter = new RateLimiter(
-    parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
-    parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10)
-  );
+  const mcpHandler = createMcpSessionHandler(config);
+  const rateLimitMax = parseRateLimitInt(process.env.RATE_LIMIT_MAX, DEFAULT_RATE_LIMIT_MAX);
+  const rateLimitWindowMs = parseRateLimitInt(
+    process.env.RATE_LIMIT_WINDOW_MS,
+    DEFAULT_RATE_LIMIT_WINDOW_MS
+  ) || DEFAULT_RATE_LIMIT_WINDOW_MS;
+  const rateLimitBurst =
+    parseRateLimitInt(process.env.RATE_LIMIT_BURST, DEFAULT_RATE_LIMIT_BURST) || DEFAULT_RATE_LIMIT_BURST;
+  const handshakeBurst =
+    parseRateLimitInt(process.env.RATE_LIMIT_HANDSHAKE_BURST, DEFAULT_HANDSHAKE_BURST) ||
+    DEFAULT_HANDSHAKE_BURST;
+  const handshakeWindowMs =
+    parseRateLimitInt(process.env.RATE_LIMIT_HANDSHAKE_WINDOW_MS, DEFAULT_HANDSHAKE_WINDOW_MS) ||
+    DEFAULT_HANDSHAKE_WINDOW_MS;
+  const rpcLimiter = new RateLimiter(rateLimitMax, rateLimitWindowMs, rateLimitBurst);
+  // Separate bucket so parallel Grok Web initialize POSTs cannot 429 the RPC budget.
+  const handshakeLimiter = new RateLimiter(handshakeBurst, handshakeWindowMs, handshakeBurst);
 
   // Cleanup rate limiter every 5 minutes
-  setInterval(() => rateLimiter.cleanup(), 300_000).unref();
-
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-
-  await server.connect(transport);
+  setInterval(() => {
+    rpcLimiter.cleanup();
+    handshakeLimiter.cleanup();
+  }, 300_000).unref();
 
   const httpServer = createHttpServer(async (req, res) => {
     const url = new URL(req.url || "/", `http://localhost:${port}`);
     const clientIp = req.socket.remoteAddress || "unknown";
+    const sessionId = headerValue(req, "mcp-session-id");
+    const kind = classifyHttpRateLimit(req.method || "GET", url.pathname, sessionId);
 
-    // Rate limiting
-    if (!rateLimiter.isAllowed(clientIp)) {
-      res.writeHead(429, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Too many requests" }));
-      return;
-    }
-
-    // Authentication check for MCP endpoints
-    if (url.pathname === "/mcp" && apiKey) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "Unauthorized. Provide Bearer token via Authorization header." }));
+    // Rate limiting: initialize (no session id) uses a short burst bucket so
+    // parallel call_connected_tool handshakes are not a 60s lockout.
+    if (kind !== "skip" && rateLimitMax !== 0) {
+      const limiter = kind === "handshake" ? handshakeLimiter : rpcLimiter;
+      const limit = limiter.isAllowed(clientIp);
+      if (!limit.allowed) {
+        res.writeHead(429, {
+          "Content-Type": "application/json",
+          "Retry-After": String(limit.retryAfterSec),
+        });
+        res.end(JSON.stringify({ error: "Too many requests", retry_after: limit.retryAfterSec }));
         return;
       }
     }
@@ -97,12 +87,37 @@ async function main() {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
 
-    if (url.pathname === "/mcp" && req.method === "POST") {
-      await transport.handleRequest(req, res);
-    } else if (url.pathname === "/mcp" && req.method === "GET") {
-      await transport.handleRequest(req, res);
-    } else if (url.pathname === "/mcp" && req.method === "DELETE") {
-      await transport.handleRequest(req, res);
+    const issuer = resolveIssuer(req.headers, process.env.OAUTH_PUBLIC_URL);
+
+    if (apiKey && await handleOAuthRoutes(req, res, url, { secret: apiKey, issuer })) {
+      return;
+    }
+
+    if (url.pathname === "/mcp" && req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, MCP-Protocol-Version, Mcp-Session-Id",
+        "Access-Control-Expose-Headers": "Mcp-Session-Id, MCP-Protocol-Version",
+      });
+      res.end();
+      return;
+    }
+
+    // Authentication check for MCP endpoints
+    if (url.pathname === "/mcp" && apiKey) {
+      const authHeader = req.headers.authorization;
+      const raw = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+      const presented = (raw ?? "").replace(/^Bearer\s+/i, "");
+      if (!isValidBearer(apiKey, presented)) {
+        writeUnauthorized(res, issuer);
+        return;
+      }
+    }
+
+    if (url.pathname === "/mcp") {
+      await mcpHandler.handle(req, res);
     } else if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok", version: "0.1.0" }));
@@ -117,8 +132,18 @@ async function main() {
     console.error(`  MCP endpoint: http://localhost:${port}/mcp`);
     console.error(`  Health check: http://localhost:${port}/health`);
     console.error(`  Connected to: ${config.baseUrl}`);
-    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token)" : "DISABLED"}`);
-    console.error(`  Rate limiting: ${process.env.RATE_LIMIT_MAX || "100"} req/min per IP`);
+    console.error(`  Authentication: ${apiKey ? "enabled (Bearer token + OAuth)" : "DISABLED"}`);
+    if (apiKey) {
+      const publicUrl = process.env.OAUTH_PUBLIC_URL?.replace(/\/+$/, "");
+      console.error(`  OAuth issuer: ${publicUrl || "(derived from Host / X-Forwarded-* headers)"}`);
+      console.error(`  OAuth consent password: FORGEJO_MCP_API_KEY`);
+    }
+    console.error(
+      rateLimitMax === 0
+        ? "  Rate limiting: disabled"
+        : `  Rate limiting: ${rateLimitBurst} burst / ${rateLimitMax} per ${rateLimitWindowMs}ms per IP` +
+          `; initialize ${handshakeBurst} per ${handshakeWindowMs}ms`
+    );
   });
 }
 
