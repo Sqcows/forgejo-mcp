@@ -4,11 +4,13 @@ import { ForgejoClient, ForgejoApiError } from "../client.js";
 const mockFetch = vi.fn();
 
 beforeEach(() => {
+  // vi.restoreAllMocks() no longer clears vi.fn() call history (vitest 4), so reset it here
+  mockFetch.mockReset();
   vi.stubGlobal("fetch", mockFetch);
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function makeClient(baseUrl = "https://forgejo.example.com", token = "test-token") {
@@ -421,6 +423,35 @@ describe("ForgejoClient", () => {
     });
   });
 
+  describe("request path safety", () => {
+    it.each([
+      "/repos/../admin/users",
+      "/repos/owner/./repo",
+      "/repos/owner/repo/contents/%2e%2e/%2E%2e/admin",
+      "/repos/owner/repo/contents/.%2e/x",
+      "/repos/owner/repo/branches/main#other",
+      "/repos/owner/repo/branches/main?token=x",
+      "/repos/owner/repo/contents/a\\..\\b",
+      "/repos/owner/repo/contents/.\t./x",
+    ])("refuses %j without sending a request", async (path) => {
+      const client = makeClient();
+
+      await expect(client.get(path)).rejects.toThrow("Invalid request path");
+      await expect(client.getRaw(path)).rejects.toThrow("Invalid request path");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("allows dots inside a segment and percent-encoded characters", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(jsonResponse({}));
+
+      await client.get("/repos/owner/.github/contents/a..b/100%25.md");
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://forgejo.example.com/api/v1/repos/owner/.github/contents/a..b/100%25.md");
+    });
+  });
+
   describe("getRaw", () => {
     it("returns text content", async () => {
       const client = makeClient();
@@ -473,5 +504,63 @@ describe("ForgejoClient", () => {
 
       await expect(client.getRaw("/nonexistent")).rejects.toThrow(ForgejoApiError);
     });
+  });
+});
+
+describe("timeouts and response size limits", () => {
+  it("passes an abort signal to fetch by default and none when the timeout is disabled", async () => {
+    mockFetch.mockReturnValue(jsonResponse({}));
+
+    await makeClient().get("/version");
+    expect(mockFetch.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
+
+    await new ForgejoClient({ baseUrl: "https://forgejo.example.com", token: "t", timeoutMs: 0 }).get("/version");
+    expect(mockFetch.mock.calls[1][1].signal).toBeUndefined();
+  });
+
+  it("fails with a clear message when Forgejo does not answer in time", async () => {
+    mockFetch.mockImplementation(
+      (_url: string, options: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener("abort", () => reject(options.signal.reason));
+        })
+    );
+    const client = new ForgejoClient({ baseUrl: "https://forgejo.example.com", token: "t", timeoutMs: 20 });
+
+    await expect(client.get("/version")).rejects.toThrow("timed out after 0.02s");
+    await expect(client.getRaw("/repos/o/r/raw/big.log")).rejects.toThrow("timed out");
+  });
+
+  it("refuses a JSON response larger than the limit", async () => {
+    const client = new ForgejoClient({ baseUrl: "https://forgejo.example.com", token: "t", maxResponseBytes: 1024 });
+    const big = JSON.stringify({ data: "x".repeat(5000) });
+
+    mockFetch.mockResolvedValueOnce(new Response(big, { headers: { "content-type": "application/json" } }));
+    await expect(client.get("/repos/o/r")).rejects.toThrow("larger than 1024 bytes");
+
+    // Also when the size is declared up front
+    mockFetch.mockResolvedValueOnce(
+      new Response(big, { headers: { "content-type": "application/json", "content-length": String(big.length) } })
+    );
+    await expect(client.get("/repos/o/r")).rejects.toThrow("FORGEJO_MAX_RESPONSE_BYTES");
+  });
+
+  it("truncates raw text larger than the limit instead of failing", async () => {
+    const client = new ForgejoClient({ baseUrl: "https://forgejo.example.com", token: "t", maxResponseBytes: 1024 });
+    mockFetch.mockResolvedValueOnce(new Response("y".repeat(5000)));
+
+    const text = await client.getRaw("/repos/o/r/actions/jobs/1/logs");
+
+    expect(text.startsWith("y".repeat(1024) + "\n\n[Truncated:")).toBe(true);
+    expect(text.length).toBeLessThan(1300);
+  });
+
+  it("returns a response within the limit unchanged", async () => {
+    const client = new ForgejoClient({ baseUrl: "https://forgejo.example.com", token: "t", maxResponseBytes: 1024 });
+    mockFetch.mockResolvedValueOnce(new Response('{"ok":true}', { headers: { "content-type": "application/json" } }));
+    mockFetch.mockResolvedValueOnce(new Response("héllo"));
+
+    expect(await client.get("/version")).toEqual({ ok: true });
+    expect(await client.getRaw("/repos/o/r/raw/a.txt")).toBe("héllo");
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@ric_/forgejo-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A Model Context Protocol (MCP) server for Forgejo and Gitea instances. Provides 457 tools across repos, issues, PRs, orgs, users, Actions, packages, and admin APIs. Works with Claude, Cursor, and any MCP-compatible client. Supports stdio and HTTP transports. Built with Claude Code.",
   "type": "module",
   "license": "MIT",
@@ -33,7 +33,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "zod": "^3.24.0"
   },
   "devDependencies": {
@@ -43,7 +43,7 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.61.1",
-    "vitest": "^3.0.0"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=18.0.0"

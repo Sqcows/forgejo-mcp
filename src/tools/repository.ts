@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, encodePath } from "./helpers.js";
 import { zOwner, zRepo, zBranch, zFilePath, zPage, zLimit, zTitle, zBody, zSha, zSearchQuery, zId, zRef, zTag } from "../validation.js";
 
 /** Topic name: lowercase letters, digits, hyphens, and dots */
@@ -183,7 +183,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     async (params) => {
       try {
         const data = await client.get(
-          `/repos/${params.owner}/${params.repo}/branches/${params.branch}`
+          `/repos/${params.owner}/${params.repo}/branches/${encodePath(params.branch)}`
         );
         return formatResponse(data);
       } catch (err) {
@@ -227,7 +227,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     async (params) => {
       try {
         const data = await client.delete(
-          `/repos/${params.owner}/${params.repo}/branches/${params.branch}`
+          `/repos/${params.owner}/${params.repo}/branches/${encodePath(params.branch)}`
         );
         return formatResponse(data);
       } catch (err) {
@@ -274,7 +274,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     async (params) => {
       try {
         const data = await client.get(
-          `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
+          `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.filepath)}`,
           { ref: params.ref }
         );
         return formatResponse(data);
@@ -300,7 +300,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     async (params) => {
       try {
         const data = await client.post(
-          `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
+          `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.filepath)}`,
           {
             content: params.content,
             message: params.message,
@@ -331,7 +331,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     async (params) => {
       try {
         const data = await client.put(
-          `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
+          `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.filepath)}`,
           {
             content: params.content,
             sha: params.sha,
@@ -362,7 +362,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
       try {
         const data = await client.request(
           "DELETE",
-          `/repos/${params.owner}/${params.repo}/contents/${params.filepath}`,
+          `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.filepath)}`,
           {
             body: {
               sha: params.sha,
@@ -669,7 +669,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/releases/tags/${params.tag}`);
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/releases/tags/${encodePath(params.tag)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -741,7 +741,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.delete(`/repos/${params.owner}/${params.repo}/releases/tags/${params.tag}`);
+        const data = await client.delete(`/repos/${params.owner}/${params.repo}/releases/tags/${encodePath(params.tag)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -869,7 +869,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/tags/${params.tag}`);
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/tags/${encodePath(params.tag)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -888,7 +888,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.delete(`/repos/${params.owner}/${params.repo}/tags/${params.tag}`);
+        const data = await client.delete(`/repos/${params.owner}/${params.repo}/tags/${encodePath(params.tag)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -910,7 +910,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/commits/${params.sha}`, { stat: params.stat, verification: params.verification, files: params.files });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/commits/${encodePath(params.sha)}`, { stat: params.stat, verification: params.verification, files: params.files });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -950,7 +950,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/compare/${params.base}...${params.head}`);
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/compare/${encodePath(params.base)}...${encodePath(params.head)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -971,7 +971,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/commits/${params.ref}/status`, { page: params.page, limit: params.limit });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/commits/${encodePath(params.ref)}/status`, { page: params.page, limit: params.limit });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -994,7 +994,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/commits/${params.ref}/statuses`, { sort: params.sort, state: params.state, page: params.page, limit: params.limit });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/commits/${encodePath(params.ref)}/statuses`, { sort: params.sort, state: params.state, page: params.page, limit: params.limit });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1132,7 +1132,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.getRaw(`/repos/${params.owner}/${params.repo}/raw/${params.filepath}`, { ref: params.ref });
+        const data = await client.getRaw(`/repos/${params.owner}/${params.repo}/raw/${encodePath(params.filepath)}`, { ref: params.ref });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1152,7 +1152,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/editorconfig/${params.filepath}`, { ref: params.ref });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/editorconfig/${encodePath(params.filepath)}`, { ref: params.ref });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1213,7 +1213,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/trees/${params.sha}`, { recursive: params.recursive, page: params.page, per_page: params.per_page });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/trees/${encodePath(params.sha)}`, { recursive: params.recursive, page: params.page, per_page: params.per_page });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1288,7 +1288,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/refs/${params.ref}`);
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/refs/${encodePath(params.ref)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1328,7 +1328,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/notes/${params.sha}`, { verification: params.verification, files: params.files });
+        const data = await client.get(`/repos/${params.owner}/${params.repo}/git/notes/${encodePath(params.sha)}`, { verification: params.verification, files: params.files });
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1348,7 +1348,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.post(`/repos/${params.owner}/${params.repo}/git/notes/${params.sha}`, {
+        const data = await client.post(`/repos/${params.owner}/${params.repo}/git/notes/${encodePath(params.sha)}`, {
           message: params.message,
         });
         return formatResponse(data);
@@ -1369,7 +1369,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.delete(`/repos/${params.owner}/${params.repo}/git/notes/${params.sha}`);
+        const data = await client.delete(`/repos/${params.owner}/${params.repo}/git/notes/${encodePath(params.sha)}`);
         return formatResponse(data);
       } catch (err) {
         return formatError(err);
@@ -1389,7 +1389,7 @@ export function registerRepositoryTools(server: McpServer, client: ForgejoClient
     },
     async (params) => {
       try {
-        const data = await client.patch(`/repos/${params.owner}/${params.repo}/branches/${params.branch}`, {
+        const data = await client.patch(`/repos/${params.owner}/${params.repo}/branches/${encodePath(params.branch)}`, {
           name: params.name,
         });
         return formatResponse(data);

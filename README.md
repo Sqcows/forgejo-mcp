@@ -159,6 +159,10 @@ Endpoint: `http://localhost:3000/mcp`
 
 **Authentication:** Set `FORGEJO_MCP_API_KEY` to require Bearer token authentication on the HTTP endpoint. Clients must include `Authorization: Bearer your-secret-api-key` in requests. If not set, the endpoint is unauthenticated (only suitable for localhost or behind a reverse proxy).
 
+**Sessions:** Each client gets its own session. The 32 most recently used sessions are kept; a client whose session has been closed receives a 404 and starts a new one.
+
+**Browser requests:** When `FORGEJO_MCP_API_KEY` is not set, requests carrying an `Origin` header are rejected unless the origin is local (`localhost`, `127.0.0.1`, `[::1]`). MCP clients do not send one; this stops a web page from reaching an unauthenticated local server through DNS rebinding.
+
 **Rate Limiting:** Enabled by default at 100 requests/minute per IP. Configure via:
 - `RATE_LIMIT_MAX` - max requests per window (default: 100)
 - `RATE_LIMIT_WINDOW_MS` - window size in milliseconds (default: 60000)
@@ -176,9 +180,17 @@ docker run -p 3000:3000 \
 Or use docker-compose:
 ```bash
 cp .env.example .env
-# Edit .env with your values, then:
+# Edit .env: set FORGEJO_URL, FORGEJO_TOKEN and FORGEJO_MCP_API_KEY, then:
 docker compose up -d
 ```
+
+`docker-compose.yml` publishes port 3000 on every network interface, so it requires `FORGEJO_MCP_API_KEY` and refuses to start when the key is unset or empty:
+
+```
+error while interpolating services.forgejo-mcp.environment.[]: required variable FORGEJO_MCP_API_KEY is missing a value: FORGEJO_MCP_API_KEY must be set (for example in .env). Generate one with 'openssl rand -hex 32'
+```
+
+Generate a key with `openssl rand -hex 32`, put it in `.env`, and have clients send it as `Authorization: Bearer <key>`.
 
 Or build from source:
 ```bash
@@ -198,9 +210,19 @@ The Docker image:
 
 ## Auto Setup
 
-When an MCP client (such as Claude Code, Claude Desktop, or Cursor) connects to this server, it automatically receives instructions describing all available tool categories and usage conventions. This means the AI assistant understands how to use the server without any additional prompting — it knows which tools exist, that most require `owner` and `repo` parameters, how pagination works, and that file content should be base64-encoded.
+When an MCP client (such as Claude Code, Claude Desktop, or Cursor) connects to this server, it automatically receives short instructions summarizing the enabled tool areas and the usage conventions: that most tools require `owner` and `repo` parameters, how pagination works, and that file content should be base64-encoded.
 
 No configuration is needed to enable this; it works out of the box via the MCP `initialize` handshake.
+
+### Context usage
+
+Tool definitions take up space in the client's context window, so the server keeps them lean:
+
+- The tool list omits JSON Schema detail the model does not need to call a tool (`pattern`, `minLength`, `maxLength`, `additionalProperties`, `$schema`) and the boilerplate descriptions of self-explanatory parameters such as `owner`, `repo`, `page`, and `limit`. Inputs are still fully validated by the server, which returns a clear error for a bad value.
+- The instructions summarize each area in one line rather than listing every tool.
+- Tool results are returned as compact JSON, without indentation.
+
+With every area enabled the tool list is roughly 45k tokens. To reduce it further, [disable the areas you do not use](#disabling-tool-areas).
 
 ## Available Tools
 
@@ -706,14 +728,18 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 | `FORGEJO_URL` | Yes | Base URL of your Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
 | `FORGEJO_DISABLED_AREAS` | No | Comma-separated tool areas to disable (e.g. `admin,actions`); all are enabled by default |
-| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication |
+| `FORGEJO_TIMEOUT_MS` | No | Give up on a Forgejo request after this long (default: 120000; `0` disables the timeout) |
+| `FORGEJO_MAX_RESPONSE_BYTES` | No | Largest response read from Forgejo (default: 10485760, i.e. 10 MB). Larger logs, diffs, and files are truncated |
+| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication. Required when using the provided `docker-compose.yml` |
 | `RATE_LIMIT_MAX` | No | Max requests per rate limit window (default: 100) |
 | `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 60000) |
 | `PORT` | No | HTTP server port (default: 3000) |
 
 ### Security Features
 - **Input validation** - All parameters validated with Zod schemas (path traversal prevention, regex-validated usernames, bounded pagination, enum enforcement)
+- **Request confinement** - Every request path is checked before it is sent, so a tool call cannot reach an endpoint other than its own
 - **SSRF protection** - Base URL validated against cloud metadata endpoints and private IP ranges
+- **Bounded requests** - Requests to Forgejo time out, responses are capped in size, and HTTP request bodies are limited to 16 MB
 - **HTTP authentication** - Optional Bearer token auth for the HTTP transport
 - **Rate limiting** - Per-IP rate limiting on HTTP endpoints
 - **Token safety** - API tokens never leaked in error messages; URLs sanitized in errors
@@ -723,7 +749,7 @@ No configuration is needed to enable this; it works out of the box via the MCP `
 ### Best Practices
 - Always use HTTPS for your Forgejo instance URL
 - Use short-lived API tokens with minimal required permissions
-- Set `FORGEJO_MCP_API_KEY` when running HTTP mode on a network
+- Set `FORGEJO_MCP_API_KEY` when running HTTP mode on a network (the provided `docker-compose.yml` enforces this)
 - Admin tools require an admin-level Forgejo token - use a non-admin token if you don't need them
 
 ## Development

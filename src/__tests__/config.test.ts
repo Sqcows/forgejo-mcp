@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig, parseCliArgs, parseToolAreas, resolveConfig } from "../config.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { DEFAULT_TIMEOUT_MS, envInt, loadConfig, parseCliArgs, parseToolAreas, resolveConfig } from "../config.js";
 
 describe("loadConfig", () => {
   const originalEnv = process.env;
@@ -222,6 +222,11 @@ describe("tool area flags", () => {
     expect(parseCliArgs(["--disable", "actions, Packages,actions"]).disabledAreas).toEqual(["actions", "packages"]);
   });
 
+  it("parses the --disable=<areas> form instead of ignoring it", () => {
+    expect(parseCliArgs(["--disable=admin,actions"]).disabledAreas).toEqual(["admin", "actions"]);
+    expect(() => parseCliArgs(["--disable=nope"])).toThrow('Unknown tool area "nope"');
+  });
+
   it("rejects unknown areas", () => {
     expect(() => parseCliArgs(["--disable-nope"])).toThrow('Unknown tool area "nope"');
     expect(() => parseToolAreas("admin,bogus")).toThrow("Valid areas:");
@@ -231,5 +236,75 @@ describe("tool area flags", () => {
     process.env.FORGEJO_DISABLED_AREAS = "admin,users";
     expect(resolveConfig().disabledAreas).toEqual(["admin", "users"]);
     expect(resolveConfig({ disabledAreas: ["actions", "admin"] }).disabledAreas).toEqual(["actions", "admin", "users"]);
+  });
+});
+
+describe("configuration hardening", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, FORGEJO_URL: "https://env-url.com", FORGEJO_TOKEN: "env-token" };
+    delete process.env.FORGEJO_TIMEOUT_MS;
+    delete process.env.FORGEJO_MAX_RESPONSE_BYTES;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.restoreAllMocks();
+  });
+
+  it("trims the token and rejects one that cannot be sent as a header", () => {
+    expect(resolveConfig({ token: "  abc123\n" }).token).toBe("abc123");
+    expect(() => resolveConfig({ token: "abc\n123" })).toThrow("whitespace or control characters");
+    expect(() => resolveConfig({ token: "   " })).toThrow("Forgejo token");
+    // The message must not quote the token back
+    expect(() => resolveConfig({ token: "sec ret" })).not.toThrow(/sec ret/);
+  });
+
+  it("rejects base URLs carrying credentials, a query, or a fragment", () => {
+    expect(() => resolveConfig({ baseUrl: "https://user:pass@forgejo.example.com" })).toThrow("must not contain credentials");
+    expect(() => resolveConfig({ baseUrl: "https://forgejo.example.com/?x=1" })).toThrow("query string or fragment");
+  });
+
+  it.each([
+    "http://169.254.169.254",
+    "http://169.254.170.2",
+    "http://[::ffff:169.254.169.254]",
+    "http://[fd00:ec2::254]",
+    "http://[fe80::1]",
+    "http://metadata.google.internal.",
+    "http://2852039166",
+  ])("blocks the metadata address %s", (url) => {
+    expect(() => resolveConfig({ baseUrl: url })).toThrow("cloud metadata");
+  });
+
+  it("still allows ordinary hosts, including IPv6 loopback", () => {
+    expect(resolveConfig({ baseUrl: "http://[::1]:3000" }).baseUrl).toBe("http://[::1]:3000");
+    expect(resolveConfig({ baseUrl: "https://codeberg.org/" }).baseUrl).toBe("https://codeberg.org");
+  });
+
+  it("reads the timeout and response limit from the environment, leaving defaults otherwise", () => {
+    expect(resolveConfig().timeoutMs).toBeUndefined();
+    expect(resolveConfig().maxResponseBytes).toBeUndefined();
+
+    process.env.FORGEJO_TIMEOUT_MS = "0";
+    process.env.FORGEJO_MAX_RESPONSE_BYTES = "2097152";
+    expect(resolveConfig().timeoutMs).toBe(0);
+    expect(resolveConfig().maxResponseBytes).toBe(2097152);
+  });
+
+  it("falls back to the default for a malformed number instead of NaN", () => {
+    process.env.RATE_LIMIT_MAX = "lots";
+    expect(envInt("RATE_LIMIT_MAX", 100, 1)).toBe(100);
+    process.env.RATE_LIMIT_MAX = "0";
+    expect(envInt("RATE_LIMIT_MAX", 100, 1)).toBe(100);
+    process.env.RATE_LIMIT_MAX = "250";
+    expect(envInt("RATE_LIMIT_MAX", 100, 1)).toBe(250);
+    delete process.env.RATE_LIMIT_MAX;
+    expect(envInt("RATE_LIMIT_MAX", 100, 1)).toBe(100);
+
+    process.env.FORGEJO_TIMEOUT_MS = "soon";
+    expect(resolveConfig().timeoutMs).toBe(DEFAULT_TIMEOUT_MS);
   });
 });

@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-10-12
+
+### Changed
+- The tool list sent to clients is now compacted, cutting it by about 40% (roughly 77k to 45k tokens with every area enabled). Validation-only JSON Schema keywords (`pattern`, `minLength`, `maxLength`, `additionalProperties`, `$schema`), the per-tool `execution` block, and the boilerplate descriptions of self-explanatory parameters (`owner`, `repo`, `org`, `page`, `limit`) are no longer sent. Inputs are still validated server-side exactly as before
+- Parameters that reuse another parameter's schema now state their own type instead of pointing at it with a JSON Schema `$ref`, which not every client resolves
+- Server instructions now summarize each tool area in one line instead of listing every tool name (about 9,900 to 1,900 characters); the names were already available from the tool list
+- Tool results are returned as compact JSON rather than indented JSON, which costs the client less context on every call
+- The compacted tool list is computed once per process instead of on every `tools/list` request
+- Requests to Forgejo now time out after 120 seconds instead of waiting forever on a stalled connection. Set `FORGEJO_TIMEOUT_MS` to change this (`0` disables it)
+- Responses from Forgejo are read up to 10 MB (`FORGEJO_MAX_RESPONSE_BYTES`). Larger logs, diffs, and raw files are returned truncated with a notice; a larger JSON response is refused with an error
+- Dependencies updated: `@modelcontextprotocol/sdk` 1.26 to 1.32 (now the minimum) and `vitest` 3 to 4
+
+### Fixed
+- HTTP mode served only one client: a second `initialize` (another client, or the same one reconnecting) was rejected with "Server already initialized" until the server was restarted. Each client now gets its own session; the 32 most recently used are kept
+- Branch names, tags, refs, and file paths containing `#`, `?`, or `%` addressed the wrong resource (`delete_branch` on `fix#12` acted on `fix`). They are now percent-encoded
+- `/health` reported version `0.1.0` instead of the running version
+- `--disable=admin,actions` was silently ignored, leaving those areas enabled; it now works like `--disable admin,actions`
+- The HTTP server now exits promptly on SIGTERM/SIGINT, so `docker stop` no longer waits for the kill timeout
+
+### Security
+- A request whose target is not a valid URL (for example `GET //`) crashed the HTTP server before authentication. It now gets a 400
+- `.` and `..` are no longer accepted as an owner, repository, or other name, and the API client refuses any path containing a dot segment (including `%2e` spellings). Previously these were resolved by URL parsing, so a tool call could reach an endpoint outside its own, including one in a disabled tool area
+- When no API key is set, the HTTP endpoint rejects requests carrying a non-local `Origin` header, which blocks DNS rebinding from a web page against an unauthenticated local server
+- The HTTP API key is compared in constant time
+- CI verifies the SHA-256 of the Node.js download, and the release workflow no longer expands the tag name into a shell script
+- Updated dependencies with known vulnerabilities (10 advisories in production dependencies, 24 including development tooling); `npm audit` now reports none
+- HTTP mode refuses request bodies over 16 MB instead of buffering a body of any size
+- A token containing whitespace or control characters is rejected at startup. Previously the resulting request error quoted the token into tool output
+- `FORGEJO_URL` may no longer contain credentials, a query string, or a fragment, and the metadata-address block now covers the whole link-local range and IPv6 forms (`[::ffff:169.254.169.254]`, `[fd00:ec2::254]`)
+- A non-numeric `RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`, or `PORT` now falls back to the default with a warning; a bad rate limit value used to lock every client out after their first request
+- `docker-compose.yml` now refuses to start unless `FORGEJO_MCP_API_KEY` is set. It publishes port 3000 on every interface, and an unset key used to become an empty one, leaving the endpoint unauthenticated. **If you run the provided compose file without a key, add one to `.env` before upgrading**
+- Added a test that drives every tool with hostile path values (`..`, encoded dots, `?`, `#`, backslashes) and checks the request stays on the tool's own endpoint
+
 ## [0.2.0] - 2026-10-12
 
 Brings the server up to date with the Forgejo 16 API: 354 new tools (103 → 457), covering every non-deprecated endpoint except those listed under "Not covered".

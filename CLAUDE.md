@@ -31,11 +31,12 @@ Entry point (index.ts or http.ts)
 ### Key Modules
 
 - **`server.ts`** — Factory that creates `McpServer` and calls nine `register*Tools()` functions (one per file in `tools/`)
-- **`client.ts`** — `ForgejoClient` class with `get/post/patch/put/delete/getRaw` methods. Errors are wrapped in `ForgejoApiError` with sanitized URLs (no token leakage)
+- **`client.ts`** — `ForgejoClient` class with `get/post/patch/put/delete/getRaw` methods. Errors are wrapped in `ForgejoApiError` with sanitized URLs (no token leakage). Refuses request paths containing `.`/`..` segments or unencoded `?`, `#`, or backslashes
+- **`compact.ts`** — Wraps the SDK's `tools/list` handler to strip validation-only schema keywords and boilerplate from the tool list sent to clients (saves context; Zod validation is unchanged)
 - **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. Tool areas (`TOOL_AREAS`) can be disabled with `--disable-<area>` / `--disable a,b` or `FORGEJO_DISABLED_AREAS`; `server.ts` skips those groups. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
-- **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
-- **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), security headers, `/health` endpoint
+- **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format; `encodePath(value)` percent-encodes a slash-separated value for use in a request path
+- **`http.ts`** — HTTP transport: one `McpServer` + transport per client session (LRU-capped), `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), `Origin` check when unauthenticated, security headers, `/health` endpoint
 
 ### Tool Registration Pattern
 
@@ -81,7 +82,9 @@ Forgejo Actions workflows live in `.forgejo/workflows/` and run on the `sqcows` 
 | `FORGEJO_URL` | Yes | Base URL of Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token |
 | `FORGEJO_DISABLED_AREAS` | No | Comma-separated tool areas to disable (e.g. `admin,actions`); all are enabled by default |
-| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth |
+| `FORGEJO_TIMEOUT_MS` | No | Forgejo request timeout in ms (default: 120000; 0 disables) |
+| `FORGEJO_MAX_RESPONSE_BYTES` | No | Largest Forgejo response read (default: 10 MB) |
+| `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth (required by `docker-compose.yml`, which fails to start without it) |
 | `PORT` | No | HTTP port (default: 3000) |
 | `RATE_LIMIT_MAX` | No | Requests per window (default: 100) |
 | `RATE_LIMIT_WINDOW_MS` | No | Window in ms (default: 60000) |
@@ -90,7 +93,8 @@ Forgejo Actions workflows live in `.forgejo/workflows/` and run on the `sqcows` 
 
 - Tool names use snake_case with domain prefixes: `list_issues`, `create_issue`, `admin_create_user`
 - Path params are destructured from query params: `const { owner, repo, ...query } = params`
-- All user-supplied identifiers (owner, repo, branch) are validated against `PATH_SEGMENT_REGEX` to prevent path traversal
+- Single-segment identifiers (owner, repo, names) are validated against `PATH_SEGMENT_REGEX`, which also rejects `.` and `..`, to prevent path traversal
+- Values that may contain slashes or special characters (branch, tag, ref, file path) must go through `encodePath()` when placed in a request path; single segments that need encoding use `encodeURIComponent()`
 - File paths block `..`, leading `/`, and backslashes
 - Pagination is bounded: page ≥ 1, limit 1–50
 - The `ForgejoApiError` class never includes the full URL in messages to avoid leaking tokens

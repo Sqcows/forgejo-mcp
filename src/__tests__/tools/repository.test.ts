@@ -243,7 +243,7 @@ describe("Repository Tools", () => {
 
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe("text");
-      expect(result.content[0].text).toContain('"name": "repo"');
+      expect(result.content[0].text).toBe('{"id":1,"name":"repo"}');
     });
 
     it("handler returns error response on failure", async () => {
@@ -387,6 +387,25 @@ describe("Repository Tools", () => {
       await handler({ owner: "user", repo: "repo", sha: "abc123", message: "Reviewed" });
 
       expect(client.post).toHaveBeenCalledWith("/repos/user/repo/git/notes/abc123", { message: "Reviewed" });
+    });
+
+    it("percent-encodes branch names and file paths instead of letting '#', '?' and '%' act as URL syntax", async () => {
+      const tools = (server as any)._registeredTools;
+      await tools["delete_branch"].handler({ owner: "user", repo: "repo", branch: "fix/issue#12" });
+      await tools["get_file_contents"].handler({ owner: "user", repo: "repo", filepath: "./docs/what?/100%.md" });
+      await tools["get_tag"].handler({ owner: "user", repo: "repo", tag: "%2e%2e/%2e%2e/admin" });
+
+      expect(client.delete).toHaveBeenCalledWith("/repos/user/repo/branches/fix/issue%2312");
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/contents/docs/what%3F/100%25.md", { ref: undefined });
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/tags/%252e%252e/%252e%252e/admin");
+    });
+
+    it("rejects '.' and '..' as owner or repository names", () => {
+      const { inputSchema } = (server as any)._registeredTools["get_repo"];
+
+      expect(inputSchema.safeParse({ owner: "..", repo: "repo" }).success).toBe(false);
+      expect(inputSchema.safeParse({ owner: "user", repo: "." }).success).toBe(false);
+      expect(inputSchema.safeParse({ owner: "user.name", repo: ".github" }).success).toBe(true);
     });
 
     it("rename_branch calls client.patch with the new name", async () => {

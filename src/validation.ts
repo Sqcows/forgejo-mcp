@@ -5,8 +5,10 @@ import { z } from "zod";
  * Prevents path traversal, injection, and ensures sane bounds.
  */
 
-// Path segment pattern: alphanumeric, hyphens, underscores, dots (no slashes, no ..)
-const PATH_SEGMENT_REGEX = /^[a-zA-Z0-9_.-]+$/;
+// Path segment pattern: alphanumeric, hyphens, underscores, dots (no slashes).
+// "." and ".." are rejected outright: they are dot segments, which URL parsing
+// resolves, so "/repos/../x" would reach a different endpoint.
+const PATH_SEGMENT_REGEX = /^(?!\.{1,2}$)[a-zA-Z0-9_.-]+$/;
 
 /** Validates a username/owner/org path segment */
 export const zOwner = z

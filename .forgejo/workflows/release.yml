@@ -18,17 +18,26 @@ jobs:
       - name: Set up Node.js
         env:
           NODE_VERSION: "22.20.0"
+          # SHA-256 of the release tarballs, from https://nodejs.org/dist/v22.20.0/SHASUMS256.txt.
+          # Update both together with NODE_VERSION.
+          NODE_SHA256_ARM64: "4181609e03dcb9880e7e5bf956061ecc0503c77a480c6631d868cb1f65a2c7dd"
+          NODE_SHA256_X64: "eeaccb0378b79406f2208e8b37a62479c70595e20be6b659125eb77dd1ab2a29"
         run: |
           case "$(uname -m)" in
-            aarch64|arm64) ARCH=arm64 ;;
-            *) ARCH=x64 ;;
+            aarch64|arm64) ARCH=arm64; SHA256="$NODE_SHA256_ARM64" ;;
+            *) ARCH=x64; SHA256="$NODE_SHA256_X64" ;;
           esac
-          curl -sSfL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          TARBALL="node-v${NODE_VERSION}-linux-${ARCH}.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$TARBALL" "https://nodejs.org/dist/v${NODE_VERSION}/$TARBALL"
+          echo "$SHA256  $RUNNER_TEMP/$TARBALL" | sha256sum -c -
+          tar xzf "$RUNNER_TEMP/$TARBALL" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/node-v${NODE_VERSION}-linux-${ARCH}/bin" >> "$GITHUB_PATH"
 
       - name: Check tag matches package.json version
         run: |
-          TAG="${{ github.ref_name }}"
+          # Read the tag from the environment: expanding it into the script text
+          # would let a crafted tag name run as shell
+          TAG="$GITHUB_REF_NAME"
           VERSION="$(node -p "require('./package.json').version")"
           if [ "${TAG#v}" != "$VERSION" ]; then
             echo "Tag $TAG does not match package.json version $VERSION" >&2

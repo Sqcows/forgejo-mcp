@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, encodePath } from "./helpers.js";
 import {
   zOwner,
   zRepo,
@@ -1058,7 +1058,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
     async (params) => {
       try {
         const data = await client.get(
-          `/repos/${params.owner}/${params.repo}/sync_fork${params.branch ? `/${params.branch}` : ""}`
+          `/repos/${params.owner}/${params.repo}/sync_fork${params.branch ? `/${encodePath(params.branch)}` : ""}`
         );
         return formatResponse(data);
       } catch (err) {
@@ -1079,7 +1079,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
     async (params) => {
       try {
         const data = await client.post(
-          `/repos/${params.owner}/${params.repo}/sync_fork${params.branch ? `/${params.branch}` : ""}`
+          `/repos/${params.owner}/${params.repo}/sync_fork${params.branch ? `/${encodePath(params.branch)}` : ""}`
         );
         return formatResponse(data);
       } catch (err) {

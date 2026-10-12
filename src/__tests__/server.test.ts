@@ -87,13 +87,27 @@ describe("createServer", () => {
     expect(tools["list_packages"]).toBeDefined();
   });
 
-  it("lists every registered tool in the server instructions", () => {
+  it("keeps the server instructions short by summarizing areas instead of listing tools", () => {
     const server = createServer(dummyConfig);
-    const tools = (server as any)._registeredTools;
     const instructions = (server.server as any)._instructions as string;
-    const listed = new Set(instructions.match(/[a-z][a-z0-9_]+/g));
-    const missing = Object.keys(tools).filter((name) => !listed.has(name));
-    expect(missing).toEqual([]);
+    expect(instructions.length).toBeLessThan(2500);
+    expect(instructions).not.toContain("admin_list_quota_groups");
+  });
+
+  it("serves a compacted tool list", async () => {
+    const server = createServer(dummyConfig);
+    const handler = (server.server as any)._requestHandlers.get("tools/list");
+    const { tools } = await handler({ method: "tools/list" }, {});
+    const getRepo = tools.find((tool: any) => tool.name === "get_repo");
+
+    expect(tools.length).toBe(Object.keys((server as any)._registeredTools).length);
+    expect(getRepo.description).toBeTruthy();
+    expect(getRepo.inputSchema).toEqual({
+      type: "object",
+      properties: { owner: { type: "string" }, repo: { type: "string" } },
+      required: ["owner", "repo"],
+    });
+    expect(getRepo.execution).toBeUndefined();
   });
 
   it("skips disabled tool areas and omits them from the instructions", () => {
