@@ -8,13 +8,20 @@ on:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: sqcows
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Set up Node.js
+        env:
+          NODE_VERSION: "22.20.0"
+        run: |
+          case "$(uname -m)" in
+            aarch64|arm64) ARCH=arm64 ;;
+            *) ARCH=x64 ;;
+          esac
+          curl -sSfL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/node-v${NODE_VERSION}-linux-${ARCH}/bin" >> "$GITHUB_PATH"
 
       - name: Install dependencies
         run: npm ci

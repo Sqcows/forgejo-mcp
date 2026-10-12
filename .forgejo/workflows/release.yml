@@ -11,18 +11,24 @@ on:
 
 jobs:
   publish:
-    runs-on: self-hosted
+    runs-on: sqcows
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+      - name: Set up Node.js
+        env:
+          NODE_VERSION: "22.20.0"
+        run: |
+          case "$(uname -m)" in
+            aarch64|arm64) ARCH=arm64 ;;
+            *) ARCH=x64 ;;
+          esac
+          curl -sSfL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${ARCH}.tar.gz" | tar xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/node-v${NODE_VERSION}-linux-${ARCH}/bin" >> "$GITHUB_PATH"
 
       - name: Check tag matches package.json version
         run: |
-          TAG="${{ gitea.ref_name }}"
+          TAG="${{ github.ref_name }}"
           VERSION="$(node -p "require('./package.json').version")"
           if [ "${TAG#v}" != "$VERSION" ]; then
             echo "Tag $TAG does not match package.json version $VERSION" >&2
@@ -51,4 +57,5 @@ jobs:
             echo "$NAME@$VERSION is already published, skipping"
             exit 0
           fi
-          npm publish --access public
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc"
+          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish --access public

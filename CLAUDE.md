@@ -72,7 +72,7 @@ Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 
 ## CI/CD
 
-Forgejo Actions workflows live in `.forgejo/workflows/`. `ci.yml` runs lint, tests, and build on pushes to `main` and on pull requests. `release.yml` publishes to npm when a version tag (`0.2.0` or `v0.2.0`) matching `package.json` is pushed; it needs an `NPM_TOKEN` repository secret.
+Forgejo Actions workflows live in `.forgejo/workflows/` and run on the `sqcows` host runner (Node is installed by a shell step, not `setup-node`). `ci.yml` runs lint, tests, and build on pushes to `main` and on pull requests. `release.yml` publishes to npm when a version tag (`0.2.0` or `v0.2.0`) matching `package.json` is pushed; it needs an `NPM_TOKEN` repository secret.
 
 ## Environment Variables
 
