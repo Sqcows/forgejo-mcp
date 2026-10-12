@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer } from "../server.js";
+import { TOOL_AREAS } from "../config.js";
 
 describe("createServer", () => {
   const dummyConfig = {
@@ -76,6 +77,45 @@ describe("createServer", () => {
     expect(tools["get_server_version"]).toBeDefined();
   });
 
+  it("registers repository settings, actions, and package tools", () => {
+    const server = createServer(dummyConfig);
+    const tools = (server as any)._registeredTools;
+    expect(tools["list_repo_hooks"]).toBeDefined();
+    expect(tools["list_branch_protections"]).toBeDefined();
+    expect(tools["list_action_runs"]).toBeDefined();
+    expect(tools["dispatch_workflow"]).toBeDefined();
+    expect(tools["list_packages"]).toBeDefined();
+  });
+
+  it("lists every registered tool in the server instructions", () => {
+    const server = createServer(dummyConfig);
+    const tools = (server as any)._registeredTools;
+    const instructions = (server.server as any)._instructions as string;
+    const listed = new Set(instructions.match(/[a-z][a-z0-9_]+/g));
+    const missing = Object.keys(tools).filter((name) => !listed.has(name));
+    expect(missing).toEqual([]);
+  });
+
+  it("skips disabled tool areas and omits them from the instructions", () => {
+    const all = Object.keys((createServer(dummyConfig) as any)._registeredTools).length;
+    const server = createServer({ ...dummyConfig, disabledAreas: ["admin", "actions"] });
+    const tools = (server as any)._registeredTools;
+    const instructions = (server.server as any)._instructions as string;
+
+    expect(tools["admin_list_users"]).toBeUndefined();
+    expect(tools["list_action_runs"]).toBeUndefined();
+    expect(tools["get_repo"]).toBeDefined();
+    expect(Object.keys(tools).length).toBeLessThan(all);
+    expect(instructions).not.toContain("**Admin**");
+    expect(instructions).not.toContain("**Actions**");
+    expect(instructions).toContain("**Repository**");
+  });
+
+  it("registers no tools when every area is disabled", () => {
+    const server = createServer({ ...dummyConfig, disabledAreas: [...TOOL_AREAS] });
+    expect(Object.keys((server as any)._registeredTools ?? {}).length).toBe(0);
+  });
+
   it("provides server instructions", () => {
     const server = createServer(dummyConfig);
     const instructions = (server.server as any)._instructions;
@@ -88,5 +128,7 @@ describe("createServer", () => {
     expect(instructions).toContain("Organizations");
     expect(instructions).toContain("Users");
     expect(instructions).toContain("Admin");
+    expect(instructions).toContain("Actions");
+    expect(instructions).toContain("Packages");
   });
 });

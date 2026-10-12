@@ -50,6 +50,37 @@ export const zTemplateName = z
   .max(255)
   .regex(PATH_SEGMENT_REGEX, "Invalid characters in name. Only alphanumeric, hyphens, underscores, and dots are allowed.");
 
+/** Generic single path segment (names of hooks, variables, quota groups, package names, etc.) */
+export const zName = zTemplateName;
+
+/** Git ref: branch, tag, or commit SHA (allows slashes, blocks traversal) */
+export const zRef = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine((val) => !val.includes(".."), "Ref must not contain '..'")
+  .refine((val) => !val.startsWith("/") && !val.endsWith("/"), "Ref must not start or end with '/'")
+  .refine((val) => !/[\\?#\s]/.test(val), "Ref must not contain backslashes, '?', '#', or whitespace")
+  .describe("Branch, tag, or commit SHA");
+
+/** Tag name (same rules as a git ref) */
+export const zTag = zRef.describe("Tag name");
+
+/** Actions secret/variable name */
+export const zSecretName = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, "Must start with a letter or underscore and contain only alphanumerics and underscores");
+
+/** Wiki page name (single path segment; URL-encoded by the tool) */
+export const zWikiPage = z
+  .string()
+  .min(1)
+  .max(255)
+  .refine((val) => !val.includes("..") && !val.includes("/") && !val.includes("\\"), "Page name must not contain '..', '/', or backslashes")
+  .describe("Wiki page name");
+
 /** Pagination: page number */
 export const zPage = z.number().int().min(1).optional().describe("Page number (starts at 1)");
 

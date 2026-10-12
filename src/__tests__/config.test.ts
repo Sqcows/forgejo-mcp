@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig, parseCliArgs, resolveConfig } from "../config.js";
+import { loadConfig, parseCliArgs, parseToolAreas, resolveConfig } from "../config.js";
 
 describe("loadConfig", () => {
   const originalEnv = process.env;
@@ -192,5 +192,44 @@ describe("resolveConfig", () => {
     const config = resolveConfig({ token: "cli-token" });
     expect(config.baseUrl).toBe("https://env-url.com");
     expect(config.token).toBe("cli-token");
+  });
+});
+
+describe("tool area flags", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, FORGEJO_URL: "https://env-url.com", FORGEJO_TOKEN: "env-token" };
+    delete process.env.FORGEJO_DISABLED_AREAS;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("enables every area by default", () => {
+    expect(parseCliArgs([]).disabledAreas).toBeUndefined();
+    expect(resolveConfig().disabledAreas).toBeUndefined();
+  });
+
+  it("parses --disable-<area> flags", () => {
+    const args = parseCliArgs(["--disable-admin", "--url", "https://x.com", "--disable-repo-settings"]);
+    expect(args.disabledAreas).toEqual(["admin", "repo-settings"]);
+    expect(args.baseUrl).toBe("https://x.com");
+  });
+
+  it("parses a comma-separated --disable list", () => {
+    expect(parseCliArgs(["--disable", "actions, Packages,actions"]).disabledAreas).toEqual(["actions", "packages"]);
+  });
+
+  it("rejects unknown areas", () => {
+    expect(() => parseCliArgs(["--disable-nope"])).toThrow('Unknown tool area "nope"');
+    expect(() => parseToolAreas("admin,bogus")).toThrow("Valid areas:");
+  });
+
+  it("reads FORGEJO_DISABLED_AREAS and combines it with CLI flags", () => {
+    process.env.FORGEJO_DISABLED_AREAS = "admin,users";
+    expect(resolveConfig().disabledAreas).toEqual(["admin", "users"]);
+    expect(resolveConfig({ disabledAreas: ["actions", "admin"] }).disabledAreas).toEqual(["actions", "admin", "users"]);
   });
 });

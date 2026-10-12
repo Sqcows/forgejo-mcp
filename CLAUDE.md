@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run build          # Compile TypeScript to dist/
 npm run dev            # Run stdio server (tsx, no build needed)
 npm run dev:http       # Run HTTP server on port 3000
-npm test               # Run all 123 tests
+npm test               # Run all tests
 npm run test:watch     # Watch mode
 npx vitest run src/__tests__/tools/repository.test.ts  # Run a single test file
 npm run lint           # ESLint
@@ -16,7 +16,7 @@ npm run lint           # ESLint
 
 ## Architecture
 
-This is an MCP (Model Context Protocol) server for Forgejo/Gitea instances, providing 103 tools across 6 categories. It has two transport modes: stdio (for Claude Code/Desktop) and HTTP (for remote access).
+This is an MCP (Model Context Protocol) server for Forgejo/Gitea instances, providing 457 tools across 9 categories. It has two transport modes: stdio (for Claude Code/Desktop) and HTTP (for remote access).
 
 ### Request Flow
 
@@ -30,9 +30,9 @@ Entry point (index.ts or http.ts)
 
 ### Key Modules
 
-- **`server.ts`** — Factory that creates `McpServer` and calls six `register*Tools()` functions
+- **`server.ts`** — Factory that creates `McpServer` and calls nine `register*Tools()` functions (one per file in `tools/`)
 - **`client.ts`** — `ForgejoClient` class with `get/post/patch/put/delete/getRaw` methods. Errors are wrapped in `ForgejoApiError` with sanitized URLs (no token leakage)
-- **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
+- **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. Tool areas (`TOOL_AREAS`) can be disabled with `--disable-<area>` / `--disable a,b` or `FORGEJO_DISABLED_AREAS`; `server.ts` skips those groups. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format
 - **`http.ts`** — HTTP transport with `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), security headers, `/health` endpoint
@@ -70,12 +70,17 @@ const result = await tool.handler({ q: "test" });
 
 Note: handlers are at `._registeredTools["name"].handler` (not `.callback`).
 
+## CI/CD
+
+Forgejo Actions workflows live in `.forgejo/workflows/`. `ci.yml` runs lint, tests, and build on pushes to `main` and on pull requests. `release.yml` publishes to npm when a version tag (`0.2.0` or `v0.2.0`) matching `package.json` is pushed; it needs an `NPM_TOKEN` repository secret.
+
 ## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `FORGEJO_URL` | Yes | Base URL of Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token |
+| `FORGEJO_DISABLED_AREAS` | No | Comma-separated tool areas to disable (e.g. `admin,actions`); all are enabled by default |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth |
 | `PORT` | No | HTTP port (default: 3000) |
 | `RATE_LIMIT_MAX` | No | Requests per window (default: 100) |

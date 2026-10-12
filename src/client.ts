@@ -114,16 +114,16 @@ export class ForgejoClient {
     return this.request<T>("POST", path, { body, params });
   }
 
-  async patch<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PATCH", path, { body });
+  async patch<T>(path: string, body?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return this.request<T>("PATCH", path, { body, params });
   }
 
-  async put<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("PUT", path, { body });
+  async put<T>(path: string, body?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return this.request<T>("PUT", path, { body, params });
   }
 
-  async delete<T = void>(path: string): Promise<T> {
-    return this.request<T>("DELETE", path);
+  async delete<T = void>(path: string, body?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    return this.request<T>("DELETE", path, { body, params });
   }
 
   async getRaw(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<string> {

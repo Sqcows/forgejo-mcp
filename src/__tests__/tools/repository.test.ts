@@ -54,6 +54,60 @@ describe("Repository Tools", () => {
       "add_collaborator",
       "edit_repo",
       "transfer_repo",
+      "get_release",
+      "get_latest_release",
+      "get_release_by_tag",
+      "edit_release",
+      "delete_release",
+      "delete_release_by_tag",
+      "list_release_assets",
+      "get_release_asset",
+      "edit_release_asset",
+      "delete_release_asset",
+      "create_tag",
+      "get_tag",
+      "delete_tag",
+      "get_commit",
+      "get_commit_diff",
+      "compare_commits",
+      "get_combined_commit_status",
+      "list_commit_statuses_by_ref",
+      "list_commit_statuses",
+      "create_commit_status",
+      "list_repo_contents",
+      "change_files",
+      "get_raw_file",
+      "get_editorconfig",
+      "apply_diff_patch",
+      "get_git_tree",
+      "get_git_blob",
+      "get_git_blobs",
+      "list_git_refs",
+      "get_git_ref",
+      "get_annotated_tag",
+      "get_commit_note",
+      "set_commit_note",
+      "delete_commit_note",
+      "rename_branch",
+      "list_repo_languages",
+      "list_stargazers",
+      "list_repo_watchers",
+      "get_repo_subscription",
+      "watch_repo",
+      "unwatch_repo",
+      "list_repo_assignees",
+      "list_repo_reviewers",
+      "list_repo_activity_feeds",
+      "check_collaborator",
+      "remove_collaborator",
+      "get_collaborator_permission",
+      "add_repo_topic",
+      "delete_repo_topic",
+      "search_topics",
+      "get_repo_by_id",
+      "list_issue_templates",
+      "get_issue_config",
+      "validate_issue_config",
     ];
 
     for (const toolName of expectedTools) {
@@ -61,13 +115,13 @@ describe("Repository Tools", () => {
     }
   });
 
-  it("registers exactly 25 repository tools", () => {
+  it("registers exactly 79 repository tools", () => {
     const server = new McpServer({ name: "test", version: "0.0.1" });
     const client = createMockClient();
     registerRepositoryTools(server, client);
 
     const tools = (server as any)._registeredTools;
-    expect(Object.keys(tools).length).toBe(25);
+    expect(Object.keys(tools).length).toBe(79);
   });
 
   describe("tool handler behavior", () => {
@@ -235,6 +289,150 @@ describe("Repository Tools", () => {
       expect(result.content[0].type).toBe("text");
       expect(typeof result.content[0].text).toBe("string");
       expect(result.content[0].text).toBe("Success");
+    });
+
+    it("edit_release calls client.patch with release id and body", async () => {
+      const handler = (server as any)._registeredTools["edit_release"].handler;
+      await handler({ owner: "user", repo: "repo", id: 7, name: "v1.0.1", draft: false });
+
+      expect(client.patch).toHaveBeenCalledWith(
+        "/repos/user/repo/releases/7",
+        expect.objectContaining({ name: "v1.0.1", draft: false })
+      );
+    });
+
+    it("delete_release_asset calls client.delete with release and attachment ids", async () => {
+      const handler = (server as any)._registeredTools["delete_release_asset"].handler;
+      await handler({ owner: "user", repo: "repo", id: 7, attachment_id: 3 });
+
+      expect(client.delete).toHaveBeenCalledWith("/repos/user/repo/releases/7/assets/3");
+    });
+
+    it("create_tag sends tag body via client.post", async () => {
+      const handler = (server as any)._registeredTools["create_tag"].handler;
+      await handler({ owner: "user", repo: "repo", tag_name: "v1.0.0", target: "main", message: "First" });
+
+      expect(client.post).toHaveBeenCalledWith("/repos/user/repo/tags", {
+        tag_name: "v1.0.0",
+        target: "main",
+        message: "First",
+      });
+    });
+
+    it("get_commit_diff uses getRaw with the diff type suffix", async () => {
+      const handler = (server as any)._registeredTools["get_commit_diff"].handler;
+      await handler({ owner: "user", repo: "repo", sha: "abc123", diff_type: "patch" });
+
+      expect(client.getRaw).toHaveBeenCalledWith("/repos/user/repo/git/commits/abc123.patch");
+    });
+
+    it("compare_commits joins base and head with three dots", async () => {
+      const handler = (server as any)._registeredTools["compare_commits"].handler;
+      await handler({ owner: "user", repo: "repo", base: "main", head: "feature/x" });
+
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/compare/main...feature/x");
+    });
+
+    it("create_commit_status posts state and context", async () => {
+      const handler = (server as any)._registeredTools["create_commit_status"].handler;
+      await handler({ owner: "user", repo: "repo", sha: "abc123", state: "success", context: "ci/build" });
+
+      expect(client.post).toHaveBeenCalledWith(
+        "/repos/user/repo/statuses/abc123",
+        expect.objectContaining({ state: "success", context: "ci/build" })
+      );
+    });
+
+    it("change_files posts file operations to the contents endpoint", async () => {
+      const handler = (server as any)._registeredTools["change_files"].handler;
+      const files = [
+        { operation: "create", path: "a.txt", content: "YQ==" },
+        { operation: "delete", path: "b.txt", sha: "abc123" },
+      ];
+      await handler({ owner: "user", repo: "repo", files, message: "Batch", branch: "main" });
+
+      expect(client.post).toHaveBeenCalledWith(
+        "/repos/user/repo/contents",
+        expect.objectContaining({ files, message: "Batch", branch: "main" })
+      );
+    });
+
+    it("get_raw_file uses getRaw and passes ref", async () => {
+      const handler = (server as any)._registeredTools["get_raw_file"].handler;
+      await handler({ owner: "user", repo: "repo", filepath: "src/index.ts", ref: "dev" });
+
+      expect(client.getRaw).toHaveBeenCalledWith("/repos/user/repo/raw/src/index.ts", { ref: "dev" });
+    });
+
+    it("get_git_tree passes recursive and paging params", async () => {
+      const handler = (server as any)._registeredTools["get_git_tree"].handler;
+      await handler({ owner: "user", repo: "repo", sha: "main", recursive: true, per_page: 100 });
+
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/git/trees/main", {
+        recursive: true,
+        page: undefined,
+        per_page: 100,
+      });
+    });
+
+    it("get_git_blobs joins SHAs into a comma-separated query param", async () => {
+      const handler = (server as any)._registeredTools["get_git_blobs"].handler;
+      await handler({ owner: "user", repo: "repo", shas: ["abc123", "def456"] });
+
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/git/blobs", { shas: "abc123,def456" });
+    });
+
+    it("set_commit_note posts the note message", async () => {
+      const handler = (server as any)._registeredTools["set_commit_note"].handler;
+      await handler({ owner: "user", repo: "repo", sha: "abc123", message: "Reviewed" });
+
+      expect(client.post).toHaveBeenCalledWith("/repos/user/repo/git/notes/abc123", { message: "Reviewed" });
+    });
+
+    it("rename_branch calls client.patch with the new name", async () => {
+      const handler = (server as any)._registeredTools["rename_branch"].handler;
+      await handler({ owner: "user", repo: "repo", branch: "old", name: "new" });
+
+      expect(client.patch).toHaveBeenCalledWith("/repos/user/repo/branches/old", { name: "new" });
+    });
+
+    it("watch_repo and unwatch_repo use put and delete on the subscription", async () => {
+      const tools = (server as any)._registeredTools;
+      await tools["watch_repo"].handler({ owner: "user", repo: "repo" });
+      await tools["unwatch_repo"].handler({ owner: "user", repo: "repo" });
+
+      expect(client.put).toHaveBeenCalledWith("/repos/user/repo/subscription");
+      expect(client.delete).toHaveBeenCalledWith("/repos/user/repo/subscription");
+    });
+
+    it("remove_collaborator calls client.delete with the collaborator path", async () => {
+      const handler = (server as any)._registeredTools["remove_collaborator"].handler;
+      await handler({ owner: "user", repo: "repo", collaborator: "alice" });
+
+      expect(client.delete).toHaveBeenCalledWith("/repos/user/repo/collaborators/alice");
+    });
+
+    it("add_repo_topic calls client.put with the topic path", async () => {
+      const handler = (server as any)._registeredTools["add_repo_topic"].handler;
+      await handler({ owner: "user", repo: "repo", topic: "mcp" });
+
+      expect(client.put).toHaveBeenCalledWith("/repos/user/repo/topics/mcp");
+    });
+
+    it("search_topics and get_repo_by_id call the top-level endpoints", async () => {
+      const tools = (server as any)._registeredTools;
+      await tools["search_topics"].handler({ q: "forgejo", limit: 5 });
+      await tools["get_repo_by_id"].handler({ id: 42 });
+
+      expect(client.get).toHaveBeenCalledWith("/topics/search", { q: "forgejo", page: undefined, limit: 5 });
+      expect(client.get).toHaveBeenCalledWith("/repositories/42");
+    });
+
+    it("list_issue_templates calls client.get with the templates path", async () => {
+      const handler = (server as any)._registeredTools["list_issue_templates"].handler;
+      await handler({ owner: "user", repo: "repo" });
+
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/issue_templates");
     });
   });
 });

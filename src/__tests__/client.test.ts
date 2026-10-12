@@ -272,6 +272,18 @@ describe("ForgejoClient", () => {
       expect(options.method).toBe("DELETE");
       expect(options.body).toBeUndefined();
     });
+
+    it("sends an optional JSON body and query params", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(noContentResponse());
+
+      await client.delete("/user/emails", { emails: ["a@example.com"] }, { force: true });
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://forgejo.example.com/api/v1/user/emails?force=true");
+      expect(options.method).toBe("DELETE");
+      expect(options.body).toBe(JSON.stringify({ emails: ["a@example.com"] }));
+    });
   });
 
   describe("204 No Content responses", () => {

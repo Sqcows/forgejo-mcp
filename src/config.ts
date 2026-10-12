@@ -1,6 +1,41 @@
+/** Tool areas that can be switched off individually. All are enabled by default. */
+export const TOOL_AREAS = [
+  "repository",
+  "repo-settings",
+  "issues",
+  "pull-requests",
+  "organizations",
+  "users",
+  "actions",
+  "packages",
+  "admin",
+] as const;
+
+export type ToolArea = (typeof TOOL_AREAS)[number];
+
 export interface ForgejoConfig {
   baseUrl: string;
   token: string;
+  /** Tool areas to leave unregistered. Omitted or empty means every area is loaded. */
+  disabledAreas?: ToolArea[];
+}
+
+/**
+ * Parse a comma-separated list of tool areas (e.g. "admin,actions").
+ * Throws on unknown names so a typo doesn't silently leave an area enabled.
+ */
+export function parseToolAreas(value: string | undefined): ToolArea[] {
+  if (!value) return [];
+  const areas: ToolArea[] = [];
+  for (const raw of value.split(",")) {
+    const name = raw.trim().toLowerCase();
+    if (!name) continue;
+    if (!(TOOL_AREAS as readonly string[]).includes(name)) {
+      throw new Error(`Unknown tool area "${name}". Valid areas: ${TOOL_AREAS.join(", ")}`);
+    }
+    if (!areas.includes(name as ToolArea)) areas.push(name as ToolArea);
+  }
+  return areas;
 }
 
 /**
@@ -77,6 +112,7 @@ export function loadConfig(): ForgejoConfig {
 
 export function parseCliArgs(args: string[]): Partial<ForgejoConfig> & { port?: number } {
   const result: Partial<ForgejoConfig> & { port?: number } = {};
+  const disabled: ToolArea[] = [];
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -89,7 +125,19 @@ export function parseCliArgs(args: string[]): Partial<ForgejoConfig> & { port?: 
       case "--port":
         result.port = parseInt(args[++i], 10);
         break;
+      case "--disable":
+        disabled.push(...parseToolAreas(args[++i]));
+        break;
+      default:
+        // --disable-<area>, e.g. --disable-admin
+        if (args[i].startsWith("--disable-")) {
+          disabled.push(...parseToolAreas(args[i].slice("--disable-".length)));
+        }
     }
+  }
+
+  if (disabled.length > 0) {
+    result.disabledAreas = [...new Set(disabled)];
   }
 
   return result;
@@ -114,8 +162,14 @@ export function resolveConfig(cliArgs?: Partial<ForgejoConfig>): ForgejoConfig {
   const cleanUrl = baseUrl.replace(/\/+$/, "");
   validateBaseUrl(cleanUrl);
 
+  // Areas disabled on the command line and in the environment are combined
+  const disabledAreas = [
+    ...new Set([...(cliArgs?.disabledAreas ?? []), ...parseToolAreas(process.env.FORGEJO_DISABLED_AREAS)]),
+  ];
+
   return {
     baseUrl: cleanUrl,
     token,
+    ...(disabledAreas.length > 0 ? { disabledAreas } : {}),
   };
 }
