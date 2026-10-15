@@ -273,6 +273,9 @@ async function main() {
     console.error(`  Connected to: ${config.baseUrl}`);
     console.error(`  Authentication: ${apiKey ? "enabled (Bearer token)" : "DISABLED"}`);
     console.error(`  Rate limiting: ${rateLimitMax} requests per ${rateLimitWindowMs / 1000}s per IP`);
+    if (config.lazy) {
+      console.error("  Tools: loaded on demand (lazy mode)");
+    }
   });
 
   // Node ignores SIGTERM when it runs as PID 1 (the container default) unless a

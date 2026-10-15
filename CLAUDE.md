@@ -30,9 +30,9 @@ Entry point (index.ts or http.ts)
 
 ### Key Modules
 
-- **`server.ts`** — Factory that creates `McpServer` and calls nine `register*Tools()` functions (one per file in `tools/`)
+- **`server.ts`** — Factory that creates `McpServer` and calls nine `register*Tools()` functions (one per file in `tools/`). In lazy mode (`--lazy` / `FORGEJO_LAZY_TOOLS`, off by default) it registers every tool disabled plus a `load_tool_area` tool that enables an area's tools and sends `notifications/tools/list_changed`; this only works in clients that refetch the tool list mid-session
 - **`client.ts`** — `ForgejoClient` class with `get/post/patch/put/delete/getRaw` methods. Errors are wrapped in `ForgejoApiError` with sanitized URLs (no token leakage). Refuses request paths containing `.`/`..` segments or unencoded `?`, `#`, or backslashes
-- **`compact.ts`** — Wraps the SDK's `tools/list` handler to strip validation-only schema keywords and boilerplate from the tool list sent to clients (saves context; Zod validation is unchanged)
+- **`compact.ts`** — Wraps the SDK's `tools/list` handler to strip validation-only schema keywords and boilerplate from the tool list sent to clients (saves context; Zod validation is unchanged). The compacted list is cached by a key that `server.ts` supplies per request, which must identify the tools currently enabled (in lazy mode this includes the loaded areas)
 - **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. Tool areas (`TOOL_AREAS`) can be disabled with `--disable-<area>` / `--disable a,b` or `FORGEJO_DISABLED_AREAS`; `server.ts` skips those groups. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
 - **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format; `encodePath(value)` percent-encodes a slash-separated value for use in a request path
@@ -82,6 +82,7 @@ Forgejo Actions workflows live in `.forgejo/workflows/` and run on the `sqcows` 
 | `FORGEJO_URL` | Yes | Base URL of Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token |
 | `FORGEJO_DISABLED_AREAS` | No | Comma-separated tool areas to disable (e.g. `admin,actions`); all are enabled by default |
+| `FORGEJO_LAZY_TOOLS` | No | `true` to start with only `load_tool_area` and load tool areas on demand, like `--lazy` (default: off). Needs a client that reloads its tool list mid-session |
 | `FORGEJO_TIMEOUT_MS` | No | Forgejo request timeout in ms (default: 120000; 0 disables) |
 | `FORGEJO_MAX_RESPONSE_BYTES` | No | Largest Forgejo response read (default: 10 MB) |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint auth (required by `docker-compose.yml`, which fails to start without it) |

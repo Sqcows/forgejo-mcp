@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { McpServer, type RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ForgejoClient } from "./client.js";
 import { installCompactToolList } from "./compact.js";
 import type { ForgejoConfig, ToolArea } from "./config.js";
+import { formatResponse } from "./tools/helpers.js";
 import { registerRepositoryTools } from "./tools/repository.js";
 import { registerIssueTools } from "./tools/issues.js";
 import { registerPullRequestTools } from "./tools/pullrequests.js";
@@ -96,12 +98,23 @@ const TOOL_GROUPS: ToolGroup[] = [
   },
 ];
 
-function buildInstructions(groups: ToolGroup[]): string {
+/** The only tool a lazy server (--lazy) lists until an area is loaded */
+export const LOAD_TOOL_AREA = "load_tool_area";
+
+function buildInstructions(groups: ToolGroup[], lazy: boolean): string {
+  // In lazy mode the areas are described by load_tool_area itself, so they
+  // reach the model even through clients that do not pass instructions on
+  const tools = lazy
+    ? `## Loading tools
+
+Tools are loaded on demand. At first only \`${LOAD_TOOL_AREA}\` is available: call it with the areas a task needs (its description lists them), then use the tools it adds. Loaded areas stay loaded until the server restarts.`
+    : `## Tool categories
+
+${groups.map((group) => `- **${group.label}**: ${group.summary}`).join("\n")}`;
+
   return `This MCP server connects to a Forgejo (or Gitea) instance and provides tools to interact with its API.
 
-## Tool categories
-
-${groups.map((group) => `- **${group.label}**: ${group.summary}`).join("\n")}
+${tools}
 
 ## Conventions
 
@@ -115,9 +128,79 @@ ${groups.map((group) => `- **${group.label}**: ${group.summary}`).join("\n")}
 `;
 }
 
+/**
+ * Register a group's tools and return them by name. The register functions do
+ * not return what they register and the SDK keeps its tools in a private map,
+ * so the group's tools are the entries that map gains.
+ */
+function registerGroup(server: McpServer, client: ForgejoClient, group: ToolGroup): Map<string, RegisteredTool> {
+  const registry = () => (server as unknown as { _registeredTools: Record<string, RegisteredTool> })._registeredTools;
+  const before = new Set(Object.keys(registry()));
+  group.register(server, client);
+  return new Map(Object.entries(registry()).filter(([name]) => !before.has(name)));
+}
+
+/**
+ * Lazy mode: hide every tool behind load_tool_area, which switches an area's
+ * tools on and tells the client its tool list changed. Only a client that
+ * refetches the list when notified will see the loaded tools. Returns the
+ * set of loaded areas, which grows as the model loads them.
+ */
+function installToolLoader(
+  server: McpServer,
+  groups: ToolGroup[],
+  areaTools: Map<ToolArea, Map<string, RegisteredTool>>
+): ReadonlySet<ToolArea> {
+  // Set directly rather than through disable()/enable(): once the server is
+  // connected, each of those sends its own list_changed notification
+  for (const tools of areaTools.values()) {
+    for (const tool of tools.values()) {
+      tool.enabled = false;
+    }
+  }
+
+  const loaded = new Set<ToolArea>();
+  const areas = groups.map((group) => group.area) as [ToolArea, ...ToolArea[]];
+
+  server.tool(
+    LOAD_TOOL_AREA,
+    "Load the tools for one or more areas of the Forgejo API. No other tools are available until their area is loaded. " +
+      `Areas: ${groups.map((group) => `${group.area} (${group.summary})`).join("; ")}`,
+    { areas: z.array(z.enum(areas)).min(1).describe("Areas to load") },
+    async ({ areas: requested }, extra) => {
+      const added = [...new Set(requested)].filter((area) => !loaded.has(area));
+      if (added.length === 0) {
+        return formatResponse(`Already loaded: ${requested.join(", ")}. Nothing changed.`);
+      }
+
+      const names: string[] = [];
+      for (const area of added) {
+        loaded.add(area);
+        for (const [name, tool] of areaTools.get(area) ?? []) {
+          tool.enabled = true;
+          names.push(name);
+        }
+      }
+      // Sent on this request's own stream, which in HTTP mode reaches clients
+      // that keep no standalone event stream open
+      await extra.sendNotification({ method: "notifications/tools/list_changed" });
+
+      return formatResponse(
+        `Loaded ${names.length} tools for ${added.join(", ")}: ${names.join(", ")}. ` +
+          "The client has been told to reload its tool list. If these tools do not appear, the client does not " +
+          "support loading tools mid-session; the server must be restarted without --lazy to use them."
+      );
+    }
+  );
+
+  return loaded;
+}
+
 export function createServer(config: ForgejoConfig): McpServer {
   const disabled = new Set(config.disabledAreas ?? []);
   const groups = TOOL_GROUPS.filter((group) => !disabled.has(group.area));
+  // With every area disabled there is nothing to load, and no loader
+  const lazy = config.lazy === true && groups.length > 0;
 
   const server = new McpServer(
     {
@@ -128,17 +211,30 @@ export function createServer(config: ForgejoConfig): McpServer {
       capabilities: {
         logging: {},
       },
-      instructions: buildInstructions(groups),
+      instructions: buildInstructions(groups, lazy),
     }
   );
 
   const client = new ForgejoClient(config);
 
+  const areaTools = new Map<ToolArea, Map<string, RegisteredTool>>();
   for (const group of groups) {
-    group.register(server, client);
+    areaTools.set(group.area, registerGroup(server, client, group));
   }
 
-  installCompactToolList(server, groups.map((group) => group.area).join(","));
+  // The cached tool list is keyed on the tools it holds: the enabled areas,
+  // plus in lazy mode the loader and whichever areas are loaded so far
+  const enabled = groups.map((group) => group.area).join(",");
+  if (lazy) {
+    const loaded = installToolLoader(server, groups, areaTools);
+    // Listed in group order, so the order areas were loaded in does not matter
+    installCompactToolList(server, () => {
+      const loadedAreas = groups.filter((group) => loaded.has(group.area)).map((group) => group.area);
+      return `lazy:${enabled}:${loadedAreas.join(",")}`;
+    });
+  } else {
+    installCompactToolList(server, () => enabled);
+  }
 
   return server;
 }

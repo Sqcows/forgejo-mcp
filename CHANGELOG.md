@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-10-15
+
+### Added
+- Lazy loading, off by default. With `--lazy` (or `FORGEJO_LAZY_TOOLS=true`) the server starts with a single `load_tool_area` tool. Calling it with one or more areas switches those tools on and sends `notifications/tools/list_changed` so the client reloads its tool list. The client starts with about 600 tokens of tool definitions and instructions instead of about 45k. **This only works with MCP clients that reload their tool list mid-session.** It has been tested with Claude Code 2.1.299 over stdio and HTTP; in a client that does not reload, the loaded tools never appear. Disabled areas cannot be loaded, and in HTTP mode each session loads areas on its own
+- The HTTP server's startup banner shows when lazy mode is on
+
 ## [0.2.1] - 2026-10-12
 
 ### Changed

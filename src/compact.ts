@@ -108,18 +108,21 @@ export function compactToolList(result: ListToolsResult): ListToolsResult {
 
 type ListToolsHandler = (request: unknown, extra: unknown) => Promise<ListToolsResult>;
 
-// Compacted lists by the set of enabled areas. Tools are only registered at
-// startup, so the list for a given set never changes, while the SDK re-derives
-// every tool's JSON Schema on each tools/list call. In HTTP mode, where each
-// session has its own server, this makes every list after the first free.
+// Compacted lists by the set of tools they contain. The list for a given set
+// never changes, while the SDK re-derives every tool's JSON Schema on each
+// tools/list call. In HTTP mode, where each session has its own server, this
+// makes every list after the first free. Lazy loading (--lazy) gives each
+// combination of loaded areas its own entry, so the number kept is capped.
+const MAX_CACHED_LISTS = 32;
 const cache = new Map<string, Promise<ListToolsResult>>();
 
 /**
  * Wraps the SDK's tools/list handler so its output is compacted and computed
- * once. Call after tools are registered; `cacheKey` must identify the set of
- * tools registered on this server.
+ * once per set of tools. Call after tools are registered; `cacheKey` must
+ * identify the tools the server currently lists, and is asked again on every
+ * tools/list request because lazy loading changes them at runtime.
  */
-export function installCompactToolList(server: McpServer, cacheKey: string): void {
+export function installCompactToolList(server: McpServer, cacheKey: () => string): void {
   // The SDK installs its tools/list handler when the first tool is registered
   // and offers no hook to post-process the result, so wrap the one it stored.
   const handlers = (server.server as unknown as { _requestHandlers: Map<string, ListToolsHandler> })._requestHandlers;
@@ -128,12 +131,17 @@ export function installCompactToolList(server: McpServer, cacheKey: string): voi
     return;
   }
   server.server.setRequestHandler(ListToolsRequestSchema, (request, extra) => {
-    let result = cache.get(cacheKey);
+    const key = cacheKey();
+    let result = cache.get(key);
     if (!result) {
       result = original(request, extra).then(compactToolList);
       // Do not remember a failure
-      result.catch(() => cache.delete(cacheKey));
-      cache.set(cacheKey, result);
+      result.catch(() => cache.delete(key));
+      if (cache.size >= MAX_CACHED_LISTS) {
+        // Evict the oldest entry (Maps iterate in insertion order)
+        cache.delete(cache.keys().next().value as string);
+      }
+      cache.set(key, result);
     }
     return result;
   });

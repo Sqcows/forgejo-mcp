@@ -11,6 +11,7 @@ services:
       # not start unauthenticated. Compose refuses to start when this is unset or empty.
       - "FORGEJO_MCP_API_KEY=${FORGEJO_MCP_API_KEY:?FORGEJO_MCP_API_KEY must be set (for example in .env). Generate one with 'openssl rand -hex 32'}"
       - FORGEJO_DISABLED_AREAS=${FORGEJO_DISABLED_AREAS:-}
+      - FORGEJO_LAZY_TOOLS=${FORGEJO_LAZY_TOOLS:-}
       - PORT=3000
       - RATE_LIMIT_MAX=100
       - RATE_LIMIT_WINDOW_MS=60000

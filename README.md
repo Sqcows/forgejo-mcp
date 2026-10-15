@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server for [Forgejo](https://forgejo.org/) and [G
 ## Features
 - Comprehensive API coverage (457 tools across 9 categories)
 - Tool areas can be disabled individually (see [Disabling tool areas](#disabling-tool-areas))
+- Optional lazy loading: start with a single tool and load areas as they are needed (see [Lazy loading](#lazy-loading---lazy))
 - Configurable base URL - works with any Forgejo or Gitea instance
 - Both stdio and HTTP transport modes
 - Token-based authentication with optional HTTP Bearer auth
@@ -99,6 +100,55 @@ docker run -p 3000:3000 \
 ```
 
 Area names are case-insensitive. An unknown name stops the server at startup with a list of the valid areas, so a typo cannot silently leave an area enabled.
+
+### Lazy loading (`--lazy`)
+
+Lazy loading is **off by default**: unless you turn it on, every tool that is not in a disabled area is loaded at startup.
+
+With `--lazy`, the server starts with a single tool, `load_tool_area`, whose description lists the tool areas above. The model calls it with the areas a task needs, for example `{"areas": ["issues", "pull-requests"]}`. The server then switches those tools on and sends the client a `notifications/tools/list_changed` notification. The client fetches the tool list again and the new tools become available. The client starts with about 600 tokens of tool definitions and instructions instead of about 45k, and the list grows only by the areas you use.
+
+> **⚠️ Lazy loading only works with MCP clients that reload their tool list during a session.** A client that ignores `notifications/tools/list_changed` keeps showing only `load_tool_area`, so the tools it loads can never be called. Check your client before relying on lazy loading:
+>
+> - **Claude Code** reloads the list: tested with version 2.1.299 over both stdio and HTTP.
+> - **Other clients** (Claude Desktop, Cursor, VS Code and others) are untested. Check whether the client's documentation mentions support for `tools/list_changed` notifications, or try it. Load an area; if its tools do not appear, the client does not support this, so remove `--lazy`.
+>
+> `load_tool_area` also says this in its result, so the model can tell you when the tools did not arrive.
+
+Turn it on with the flag or the environment variable:
+
+```bash
+npx @ric_/forgejo-mcp --lazy
+
+# or
+export FORGEJO_LAZY_TOOLS=true
+```
+
+In an MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "forgejo": {
+      "command": "npx",
+      "args": ["@ric_/forgejo-mcp", "--lazy"],
+      "env": {
+        "FORGEJO_URL": "https://your-instance.com",
+        "FORGEJO_TOKEN": "your-token"
+      }
+    }
+  }
+}
+```
+
+HTTP mode accepts the same flag (`npx @ric_/forgejo-mcp-http --lazy`). With Docker or docker-compose, set `FORGEJO_LAZY_TOOLS=true`.
+
+Things to know:
+
+- **It works with `--disable`.** A disabled area is not offered by `load_tool_area` and cannot be loaded.
+- **Loaded areas stay loaded** until the server restarts. In HTTP mode each client session starts with nothing loaded and loads areas on its own.
+- **Each area costs one extra tool call**, and the model has to choose the right area for the task. If it struggles to find a tool, it can load several areas at once.
+- **Permissions still work per tool.** Loaded tools keep their usual names, so allow and deny rules in your client (for example Claude Code's `mcp__forgejo__delete_repo`) apply as normal. You may want to allow `mcp__forgejo__load_tool_area` so that loading an area does not prompt.
+- **Claude Code users may not need it.** Recent versions of Claude Code can already defer MCP tool definitions themselves and load a tool's schema only when it is used. Lazy loading helps most in clients that put every tool's full definition into context up front.
 
 ## Usage
 
@@ -222,7 +272,7 @@ Tool definitions take up space in the client's context window, so the server kee
 - The instructions summarize each area in one line rather than listing every tool.
 - Tool results are returned as compact JSON, without indentation.
 
-With every area enabled the tool list is roughly 45k tokens. To reduce it further, [disable the areas you do not use](#disabling-tool-areas).
+With every area enabled the tool list is roughly 45k tokens. To reduce it further, [disable the areas you do not use](#disabling-tool-areas), or, if your client supports it, [load areas on demand](#lazy-loading---lazy) (about 600 tokens to start).
 
 ## Available Tools
 
@@ -728,6 +778,7 @@ With every area enabled the tool list is roughly 45k tokens. To reduce it furthe
 | `FORGEJO_URL` | Yes | Base URL of your Forgejo/Gitea instance |
 | `FORGEJO_TOKEN` | Yes | API token (generate at `{your-instance}/user/settings/applications`) |
 | `FORGEJO_DISABLED_AREAS` | No | Comma-separated tool areas to disable (e.g. `admin,actions`); all are enabled by default |
+| `FORGEJO_LAZY_TOOLS` | No | `true` to start with only `load_tool_area` and load tool areas on demand, like `--lazy` (default: off). Needs a client that reloads its tool list mid-session |
 | `FORGEJO_TIMEOUT_MS` | No | Give up on a Forgejo request after this long (default: 120000; `0` disables the timeout) |
 | `FORGEJO_MAX_RESPONSE_BYTES` | No | Largest response read from Forgejo (default: 10485760, i.e. 10 MB). Larger logs, diffs, and files are truncated |
 | `FORGEJO_MCP_API_KEY` | No | Bearer token for HTTP endpoint authentication. Required when using the provided `docker-compose.yml` |

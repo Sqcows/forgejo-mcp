@@ -308,3 +308,49 @@ describe("configuration hardening", () => {
     expect(resolveConfig().timeoutMs).toBe(DEFAULT_TIMEOUT_MS);
   });
 });
+
+describe("lazy loading flag", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, FORGEJO_URL: "https://env-url.com", FORGEJO_TOKEN: "env-token" };
+    delete process.env.FORGEJO_LAZY_TOOLS;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    vi.restoreAllMocks();
+  });
+
+  it("is off by default", () => {
+    expect(parseCliArgs([]).lazy).toBeUndefined();
+    expect(resolveConfig().lazy).toBeUndefined();
+  });
+
+  it("is turned on by --lazy", () => {
+    const args = parseCliArgs(["--url", "https://x.com", "--lazy", "--disable-admin"]);
+    expect(args.lazy).toBe(true);
+    expect(args.disabledAreas).toEqual(["admin"]);
+    expect(resolveConfig(args).lazy).toBe(true);
+  });
+
+  it("is turned on by FORGEJO_LAZY_TOOLS", () => {
+    for (const value of ["1", "true", "YES", " on "]) {
+      process.env.FORGEJO_LAZY_TOOLS = value;
+      expect(resolveConfig().lazy).toBe(true);
+    }
+  });
+
+  it("stays off for false values, and for unrecognized ones with a warning", () => {
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const value of ["0", "false", "Off", ""]) {
+      process.env.FORGEJO_LAZY_TOOLS = value;
+      expect(resolveConfig().lazy).toBeUndefined();
+    }
+    expect(warn).not.toHaveBeenCalled();
+
+    process.env.FORGEJO_LAZY_TOOLS = "sometimes";
+    expect(resolveConfig().lazy).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('ignoring invalid FORGEJO_LAZY_TOOLS="sometimes"'));
+  });
+});

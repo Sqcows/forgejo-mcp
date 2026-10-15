@@ -22,6 +22,12 @@ export interface ForgejoConfig {
   timeoutMs?: number;
   /** Largest response body to read from Forgejo. Default: DEFAULT_MAX_RESPONSE_BYTES. */
   maxResponseBytes?: number;
+  /**
+   * Start with only the load_tool_area tool and register each area's tools
+   * with the client when the model loads it. Off by default; needs a client
+   * that reloads its tool list mid-session.
+   */
+  lazy?: boolean;
 }
 
 /** Long enough for slow operations such as repository migration, short enough that a stalled connection does not hang a tool call forever */
@@ -44,6 +50,23 @@ export function envInt(name: string, fallback: number, min = 0): number {
     return fallback;
   }
   return value;
+}
+
+const TRUE_VALUES = new Set(["1", "true", "yes", "on"]);
+const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+
+/**
+ * Read an on/off setting from the environment. Unset or empty means off, and
+ * an unrecognized value is treated as off with a warning.
+ */
+export function envFlag(name: string): boolean {
+  const raw = process.env[name]?.trim();
+  if (!raw) return false;
+  if (TRUE_VALUES.has(raw.toLowerCase())) return true;
+  if (!FALSE_VALUES.has(raw.toLowerCase())) {
+    console.error(`WARNING: ignoring invalid ${name}="${raw}"; expected true or false.`);
+  }
+  return false;
 }
 
 /**
@@ -201,6 +224,9 @@ export function parseCliArgs(args: string[]): Partial<ForgejoConfig> & { port?: 
       case "--disable":
         disabled.push(...parseToolAreas(args[++i]));
         break;
+      case "--lazy":
+        result.lazy = true;
+        break;
       default:
         // --disable-<area> or --disable=<areas>, e.g. --disable-admin, --disable=admin,actions.
         // The "=" form is accepted so it is not silently ignored, leaving the areas enabled.
@@ -247,11 +273,14 @@ export function resolveConfig(cliArgs?: Partial<ForgejoConfig>): ForgejoConfig {
     ? envInt("FORGEJO_MAX_RESPONSE_BYTES", DEFAULT_MAX_RESPONSE_BYTES, 1024)
     : undefined;
 
+  const lazy = cliArgs?.lazy === true || envFlag("FORGEJO_LAZY_TOOLS");
+
   return {
     baseUrl: cleanUrl,
     token: cleanToken(token),
     ...(disabledAreas.length > 0 ? { disabledAreas } : {}),
     ...(timeoutMs !== undefined ? { timeoutMs } : {}),
     ...(maxResponseBytes !== undefined ? { maxResponseBytes } : {}),
+    ...(lazy ? { lazy } : {}),
   };
 }
