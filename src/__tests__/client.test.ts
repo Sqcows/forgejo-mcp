@@ -183,6 +183,29 @@ describe("ForgejoClient", () => {
       const parsed = new URL(url);
       expect(parsed.searchParams.get("exclusive")).toBe("true");
     });
+
+    it("sends an array as one parameter per item", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(jsonResponse({}));
+
+      await client.get("/repos/o/r/actions/runs", { status: ["success", "failure"], labels: [3, 7], page: 1 });
+
+      const parsed = new URL(mockFetch.mock.calls[0][0]);
+      expect(parsed.searchParams.getAll("status")).toEqual(["success", "failure"]);
+      expect(parsed.searchParams.getAll("labels")).toEqual(["3", "7"]);
+      expect(parsed.search).toBe("?status=success&status=failure&labels=3&labels=7&page=1");
+    });
+
+    it("omits an empty array", async () => {
+      const client = makeClient();
+      mockFetch.mockReturnValueOnce(jsonResponse({}));
+
+      await client.get("/repos/o/r/actions/runs", { status: [], page: 1 });
+
+      const parsed = new URL(mockFetch.mock.calls[0][0]);
+      expect(parsed.searchParams.has("status")).toBe(false);
+      expect(parsed.searchParams.get("page")).toBe("1");
+    });
   });
 
   describe("POST requests", () => {

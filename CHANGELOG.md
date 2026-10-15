@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-10-15
+
+### Fixed
+- `list_action_runs` (`status`, `event`) and `list_action_tasks` (`status`) failed with `unknown status` when given more than one value, because the values were sent as a single comma-separated parameter. Array values are now sent as one query parameter per item (`status=success&status=failure`), which is what Forgejo expects
+- `list_pull_requests` could not filter by label. It took comma-separated label names, and Forgejo, which expects label IDs, failed with a 500 error for any name or for more than one ID. `labels` is now an array of label IDs (find them with `list_labels`); a string is no longer accepted
+
 ## [0.3.0] - 2026-10-15
 
 ### Added

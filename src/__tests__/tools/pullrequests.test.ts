@@ -96,6 +96,17 @@ describe("Pull Request Tools", () => {
       );
     });
 
+    it("list_pull_requests filters by label IDs, not names", async () => {
+      (client.get as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+      const tool = (server as any)._registeredTools["list_pull_requests"];
+      await tool.handler({ owner: "user", repo: "repo", labels: [3, 7] });
+
+      expect(client.get).toHaveBeenCalledWith("/repos/user/repo/pulls", expect.objectContaining({ labels: [3, 7] }));
+      // Forgejo parses each label as an integer ID and fails with a 500 on a name
+      expect(tool.inputSchema.safeParse({ owner: "user", repo: "repo", labels: "bug" }).success).toBe(false);
+    });
+
     it("create_pull_request sends correct body", async () => {
       (client.post as ReturnType<typeof vi.fn>).mockResolvedValue({ number: 1 });
 

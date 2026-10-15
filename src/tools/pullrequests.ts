@@ -19,7 +19,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       state: zState,
       sort: z.string().optional().describe("Sort field"),
-      labels: z.string().optional().describe("Comma-separated label names"),
+      labels: z.array(z.number().int().positive()).optional().describe("Filter by label IDs (see list_labels)"),
       milestone: z.string().optional().describe("Milestone name or ID"),
       poster: zOwner.optional().describe("Filter by pull request author username"),
       base: zBranch.optional().describe("Filter by target base branch"),

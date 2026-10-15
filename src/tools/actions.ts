@@ -33,8 +33,8 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
         const data = await client.get(
           `/repos/${params.owner}/${params.repo}/actions/runs`,
           {
-            event: params.event?.join(",") || undefined,
-            status: params.status?.join(",") || undefined,
+            event: params.event,
+            status: params.status,
             run_number: params.run_number,
             head_sha: params.head_sha,
             ref: params.ref,
@@ -260,7 +260,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
         const data = await client.get(
           `/repos/${params.owner}/${params.repo}/actions/tasks`,
           {
-            status: params.status?.join(",") || undefined,
+            status: params.status,
             page: params.page,
             limit: params.limit,
           }

@@ -11,7 +11,10 @@ export interface ApiError {
   status: number;
 }
 
-type QueryParams = Record<string, string | number | boolean | undefined>;
+type QueryValue = string | number | boolean;
+
+/** An array value is sent as one parameter per item (`status=a&status=b`), as Forgejo's list filters expect */
+type QueryParams = Record<string, QueryValue | readonly QueryValue[] | undefined>;
 
 // A "." or ".." path segment, including the percent-encoded spellings that URL
 // parsing treats the same way. Left in, "/repos/../admin/users" would be
@@ -64,7 +67,12 @@ export class ForgejoClient {
 
     if (params) {
       for (const [key, value] of Object.entries(params)) {
-        if (value !== undefined) {
+        if (Array.isArray(value)) {
+          // String(["a", "b"]) would send "a,b", which Forgejo reads as one unknown value
+          for (const item of value) {
+            url.searchParams.append(key, String(item));
+          }
+        } else if (value !== undefined) {
           url.searchParams.set(key, String(value));
         }
       }

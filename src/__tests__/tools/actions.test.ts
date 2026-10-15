@@ -111,7 +111,7 @@ describe("Actions Tools", () => {
       tools = (server as any)._registeredTools;
     });
 
-    it("list_action_runs joins array filters into comma-separated query params", async () => {
+    it("list_action_runs passes array filters through for the client to repeat", async () => {
       (client.get as ReturnType<typeof vi.fn>).mockResolvedValue({ workflow_runs: [] });
 
       await tools["list_action_runs"].handler({
@@ -126,19 +126,20 @@ describe("Actions Tools", () => {
       expect(client.get).toHaveBeenCalledWith(
         "/repos/user/repo/actions/runs",
         expect.objectContaining({
-          event: "push,pull_request",
-          status: "failure",
+          event: ["push", "pull_request"],
+          status: ["failure"],
           ref: "refs/heads/main",
           limit: 10,
         })
       );
     });
 
-    it("list_action_runs omits array filters that are not set", async () => {
+    it("list_action_runs leaves empty and unset filters for the client to omit", async () => {
       await tools["list_action_runs"].handler({ owner: "user", repo: "repo", event: [] });
 
+      // The client sends no parameter for an empty array or undefined (see client.test.ts)
       const query = (client.get as ReturnType<typeof vi.fn>).mock.calls[0][1];
-      expect(query.event).toBeUndefined();
+      expect(query.event).toEqual([]);
       expect(query.status).toBeUndefined();
     });
 
@@ -187,12 +188,12 @@ describe("Actions Tools", () => {
       expect(client.delete).toHaveBeenCalledWith("/repos/user/repo/actions/artifacts/9");
     });
 
-    it("list_action_tasks joins the status filter", async () => {
+    it("list_action_tasks passes the status filter through", async () => {
       await tools["list_action_tasks"].handler({ owner: "user", repo: "repo", status: ["running", "waiting"] });
 
       expect(client.get).toHaveBeenCalledWith(
         "/repos/user/repo/actions/tasks",
-        expect.objectContaining({ status: "running,waiting" })
+        expect.objectContaining({ status: ["running", "waiting"] })
       );
     });
 
