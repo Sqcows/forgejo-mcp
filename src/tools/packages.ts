@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zPage, zLimit, zSearchQuery } from "../validation.js";
 
 const zPackageType = z.enum([
@@ -31,6 +31,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/packages/${params.owner}`, {
@@ -56,6 +57,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       name: zPackageName.describe("Name of the package"),
       version: zPackageVersion.describe("Version of the package"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -78,6 +80,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       name: zPackageName.describe("Name of the package"),
       version: zPackageVersion.describe("Version of the package"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -100,6 +103,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       name: zPackageName.describe("Name of the package"),
       version: zPackageVersion.describe("Version of the package"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -122,6 +126,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       name: zPackageName.describe("Name of the package"),
       repo_name: zRepo.describe("Name of the repository to link"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -143,6 +148,7 @@ export function registerPackageTools(server: McpServer, client: ForgejoClient): 
       type: zPackageType.describe("Type of the package"),
       name: zPackageName.describe("Name of the package"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(

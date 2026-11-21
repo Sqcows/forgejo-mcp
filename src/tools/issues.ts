@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zPage, zLimit, zIndex, zId, zTitle, zBody, zState, zName, zSearchQuery } from "../validation.js";
 
 const zReaction = z.string().min(1).max(64).describe("Reaction content, e.g. '+1', '-1', 'laugh', 'hooray', 'confused', 'heart', 'rocket', 'eyes'");
@@ -32,6 +32,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       assigned_by: zOwner.optional().describe("Only show items assigned to this user"),
       mentioned_by: zOwner.optional().describe("Only show items mentioning this user"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...query } = params;
@@ -52,6 +53,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/${params.index}`);
@@ -75,6 +77,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       milestone: z.number().optional().describe("Milestone ID"),
       assignees: z.array(z.string()).optional().describe("Array of assignee usernames"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...body } = params;
@@ -101,6 +104,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       milestone: z.number().optional().describe("Milestone ID"),
       assignees: z.array(z.string()).optional().describe("Array of assignee usernames"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -123,6 +127,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -144,6 +149,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       body: zBody.describe("Comment body"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, body } = params;
@@ -165,6 +171,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       id: zId,
       body: zBody.describe("New comment body"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, body } = params;
@@ -185,6 +192,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id } = params;
@@ -206,6 +214,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...query } = params;
@@ -226,6 +235,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/labels/${params.id}`);
@@ -247,6 +257,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       color: z.string().regex(/^[0-9a-fA-F]{6}$/, "Must be a 6-char hex color").describe("Label color as hex string without #"),
       description: zBody.optional().describe("Label description"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...body } = params;
@@ -270,6 +281,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       color: z.string().regex(/^[0-9a-fA-F]{6}$/, "Must be a 6-char hex color").optional().describe("New label color as hex string without #"),
       description: zBody.optional().describe("New label description"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, ...body } = params;
@@ -290,6 +302,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/labels/${params.id}`);
@@ -310,6 +323,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       labels: z.array(z.number()).describe("Array of label IDs to add"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, labels } = params;
@@ -331,6 +345,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       id: zId,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/labels/${params.id}`);
@@ -352,6 +367,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...query } = params;
@@ -372,6 +388,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/milestones/${params.id}`);
@@ -394,6 +411,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       due_on: z.string().optional().describe("Due date in ISO 8601 format"),
       state: zState,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...body } = params;
@@ -418,6 +436,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       due_on: z.string().optional().describe("New due date in ISO 8601 format"),
       state: zState,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, ...body } = params;
@@ -438,6 +457,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/milestones/${params.id}`);
@@ -472,6 +492,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get("/repos/issues/search", params);
@@ -491,6 +512,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}`);
@@ -513,6 +535,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...query } = params;
@@ -533,6 +556,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId.describe("Comment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/comments/${params.id}`);
@@ -554,6 +578,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -575,6 +600,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       content: zReaction,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -596,6 +622,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       content: zReaction,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -616,6 +643,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId.describe("Comment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/comments/${params.id}/reactions`);
@@ -636,6 +664,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       id: zId.describe("Comment ID"),
       content: zReaction,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, ...body } = params;
@@ -657,6 +686,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       id: zId.describe("Comment ID"),
       content: zReaction,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, ...body } = params;
@@ -679,6 +709,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -702,6 +733,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       target_repo: zRepo.describe("Repository containing the issue to depend on"),
       target_index: zIndex.describe("Index of the issue to depend on"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(`/repos/${params.owner}/${params.repo}/issues/${params.index}/dependencies`, { owner: params.target_owner, repo: params.target_repo, index: params.target_index });
@@ -724,6 +756,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       target_repo: zRepo.describe("Repository containing the dependency to remove"),
       target_index: zIndex.describe("Index of the dependency to remove"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/dependencies`, { owner: params.target_owner, repo: params.target_repo, index: params.target_index });
@@ -745,6 +778,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -768,6 +802,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       target_repo: zRepo.describe("Repository containing the issue to block"),
       target_index: zIndex.describe("Index of the issue to block"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(`/repos/${params.owner}/${params.repo}/issues/${params.index}/blocks`, { owner: params.target_owner, repo: params.target_repo, index: params.target_index });
@@ -790,6 +825,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       target_repo: zRepo.describe("Repository containing the issue to unblock"),
       target_index: zIndex.describe("Index of the issue to unblock"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/blocks`, { owner: params.target_owner, repo: params.target_repo, index: params.target_index });
@@ -809,6 +845,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/${params.index}/labels`);
@@ -829,6 +866,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       labels: z.array(z.union([z.number(), z.string()])).describe("Array of label IDs or label names"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -849,6 +887,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/labels`);
@@ -868,6 +907,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         await client.post(`/repos/${params.owner}/${params.repo}/issues/${params.index}/pin`);
@@ -887,6 +927,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/pin`);
@@ -907,6 +948,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       position: z.number().int().positive().describe("New pin position (starts at 1)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.patch(`/repos/${params.owner}/${params.repo}/issues/${params.index}/pin/${params.position}`);
@@ -925,6 +967,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/pinned`);
@@ -943,6 +986,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/new_pin_allowed`);
@@ -963,6 +1007,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       due_date: z.string().nullable().describe("Deadline in ISO 8601 format (only the date is used), or null to remove the deadline"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -987,6 +1032,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -1012,6 +1058,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -1035,6 +1082,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       created: z.string().optional().describe("When the time was tracked, in ISO 8601 format"),
       user_name: zOwner.optional().describe("User who spent the time (defaults to the authenticated user)"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -1055,6 +1103,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/times`);
@@ -1075,6 +1124,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       id: zId.describe("Tracked time ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/times/${params.id}`);
@@ -1098,6 +1148,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...query } = params;
@@ -1118,6 +1169,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.post(`/repos/${params.owner}/${params.repo}/issues/${params.index}/stopwatch/start`);
@@ -1137,6 +1189,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.post(`/repos/${params.owner}/${params.repo}/issues/${params.index}/stopwatch/stop`);
@@ -1156,6 +1209,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/stopwatch/delete`);
@@ -1177,6 +1231,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...query } = params;
@@ -1197,6 +1252,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/${params.index}/subscriptions/check`);
@@ -1217,6 +1273,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       user: zOwner.describe("Username to subscribe"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         await client.put(`/repos/${params.owner}/${params.repo}/issues/${params.index}/subscriptions/${params.user}`);
@@ -1237,6 +1294,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       user: zOwner.describe("Username to unsubscribe"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/subscriptions/${params.user}`);
@@ -1256,6 +1314,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       index: zIndex,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/${params.index}/assets`);
@@ -1276,6 +1335,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       attachment_id: zId.describe("Attachment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/${params.index}/assets/${params.attachment_id}`);
@@ -1298,6 +1358,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       name: zTitle.optional().describe("New attachment name"),
       browser_download_url: z.string().url().max(2048).optional().describe("New download URL (only for external attachments)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, attachment_id, ...body } = params;
@@ -1319,6 +1380,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       index: zIndex,
       attachment_id: zId.describe("Attachment ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/${params.index}/assets/${params.attachment_id}`);
@@ -1338,6 +1400,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       repo: zRepo,
       id: zId.describe("Comment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/comments/${params.id}/assets`);
@@ -1358,6 +1421,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       id: zId.describe("Comment ID"),
       attachment_id: zId.describe("Attachment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/issues/comments/${params.id}/assets/${params.attachment_id}`);
@@ -1380,6 +1444,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       name: zTitle.optional().describe("New attachment name"),
       browser_download_url: z.string().url().max(2048).optional().describe("New download URL (only for external attachments)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, id, attachment_id, ...body } = params;
@@ -1401,6 +1466,7 @@ export function registerIssueTools(server: McpServer, client: ForgejoClient): vo
       id: zId.describe("Comment ID"),
       attachment_id: zId.describe("Attachment ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/issues/comments/${params.id}/assets/${params.attachment_id}`);

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient, ForgejoApiError } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zBranch, zPage, zLimit, zId, zName, zTitle, zBody, zSearchQuery, zVisibility, zTemplateName, zMarkdownMode } from "../validation.js";
 
 export function registerAdminTools(server: McpServer, client: ForgejoClient): void {
@@ -15,6 +15,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/admin/users", {
@@ -38,6 +39,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       password: z.string().min(6).max(255).describe("Password for the new user"),
       must_change_password: z.boolean().optional().describe("Whether the user must change password on first login"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/admin/users", {
@@ -60,6 +62,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       username: zOwner.describe("Username of the user to delete"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/users/${params.username}`);
@@ -80,6 +83,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       active: z.boolean().optional().describe("Whether the user account is active"),
       admin: z.boolean().optional().describe("Whether the user has admin privileges"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const body: Record<string, unknown> = {};
@@ -99,6 +103,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "admin_list_cron_jobs",
     "List all cron jobs (requires admin privileges)",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/admin/cron");
@@ -116,6 +121,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       task: zTemplateName.describe("Name of the cron task to run"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/cron/${params.task}`);
@@ -131,6 +137,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "admin_list_hooks",
     "List system webhooks (requires admin privileges)",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/admin/hooks");
@@ -148,6 +155,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_server_version",
     "Get the Forgejo server version",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/version");
@@ -167,6 +175,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       mode: zMarkdownMode.describe("Render mode: gfm, comment, or plain"),
       context: z.string().max(255).optional().describe("Context for resolving relative links (e.g. owner/repo)"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.post("/markdown", {
@@ -191,6 +200,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       context: z.string().max(255).optional().describe("Context for resolving relative links"),
       wiki: z.boolean().optional().describe("Whether the content is wiki content"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.post("/markup", {
@@ -211,6 +221,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "list_gitignore_templates",
     "List all available gitignore templates",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/gitignore/templates");
@@ -228,6 +239,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       name: zTemplateName.describe("Name of the gitignore template"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/gitignore/templates/${params.name}`);
@@ -243,6 +255,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "list_license_templates",
     "List all available license templates",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/licenses");
@@ -260,6 +273,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       name: zTemplateName.describe("Name of the license template"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/licenses/${params.name}`);
@@ -275,6 +289,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "list_label_templates",
     "List all available label templates",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/label/templates");
@@ -292,6 +307,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       name: zTemplateName.describe("Name of the label template"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/label/templates/${params.name}`);
@@ -307,6 +323,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_nodeinfo",
     "Get the Forgejo instance NodeInfo",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/nodeinfo");
@@ -328,6 +345,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const query = { labels: params.labels, page: params.page, limit: params.limit };
@@ -349,6 +367,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_runner_registration_token",
     "Get a runner registration token (requires admin privileges). Deprecated in Forgejo 16 in favour of admin_register_runner",
     {},
+    { ...DESTRUCTIVE_TOOL, idempotentHint: true },
     async () => {
       try {
         const data = await client.get("/admin/runners/registration-token");
@@ -369,6 +388,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/admin/emails", {
@@ -391,6 +411,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/admin/emails/search", {
@@ -412,6 +433,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       username: zOwner.describe("Username of the user"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/users/${params.username}/emails`);
@@ -430,6 +452,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       username: zOwner.describe("Username of the user"),
       emails: z.array(z.string().email()).min(1).describe("Email addresses to delete"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/users/${params.username}/emails`, {
@@ -456,6 +479,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(4096).optional().describe("Authorization header sent with webhook deliveries"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/admin/hooks", {
@@ -480,6 +504,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       id: zId.describe("ID of the webhook"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/hooks/${params.id}`);
@@ -502,6 +527,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(4096).optional().describe("Authorization header sent with webhook deliveries"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/admin/hooks/${params.id}`, {
@@ -525,6 +551,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       id: zId.describe("ID of the webhook"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/hooks/${params.id}`);
@@ -545,6 +572,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/admin/orgs", {
@@ -573,6 +601,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       visibility: zVisibility.describe("Visibility: public, limited, or private"),
       repo_admin_change_team_access: z.boolean().optional().describe("Whether repo admins can change team access"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/orgs`, {
@@ -611,6 +640,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       object_format_name: z.enum(["sha1", "sha256"]).optional().describe("Object format of the underlying git repository"),
       trust_model: z.enum(["default", "collaborator", "committer", "collaboratorcommitter"]).optional().describe("Trust model of the repository"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/repos`, {
@@ -642,6 +672,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       username: zOwner.describe("Current username of the user"),
       new_username: zOwner.describe("New username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/rename`, {
@@ -664,6 +695,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       key: z.string().min(1).max(16384).describe("SSH public key (armored)"),
       read_only: z.boolean().optional().describe("Whether the key has only read access"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/keys`, {
@@ -686,6 +718,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       username: zOwner.describe("Username of the user"),
       id: zId.describe("ID of the key to delete"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/users/${params.username}/keys/${params.id}`);
@@ -705,6 +738,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/users/${params.username}/tokens`, {
@@ -731,6 +765,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
         name: zRepo,
       })).optional().describe("If provided and non-empty, restricts the token to these repositories"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/tokens`, {
@@ -753,6 +788,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       username: zOwner.describe("Username of the user"),
       token: zName.describe("Token to delete, identified by ID or, if not available, by name"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/users/${params.username}/tokens/${params.token}`);
@@ -774,6 +810,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       limit: zLimit,
       pattern: z.string().max(255).optional().describe("Pattern of repositories to search for"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/admin/unadopted", {
@@ -796,6 +833,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       owner: zOwner,
       repo: zRepo,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/unadopted/${params.owner}/${params.repo}`);
@@ -814,6 +852,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/unadopted/${params.owner}/${params.repo}`);
@@ -831,6 +870,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "admin_list_quota_groups",
     "List the available quota groups (requires admin privileges)",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/admin/quota/groups");
@@ -853,6 +893,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
         subjects: z.array(z.string().max(255)).optional().describe("The subjects affected by the rule (e.g. size:all, size:repos:all)"),
       })).optional().describe("Rules to add to the new group; rules that do not exist are created"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/admin/quota/groups", {
@@ -873,6 +914,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       quotagroup: zName.describe("Name of the quota group"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/quota/groups/${params.quotagroup}`);
@@ -890,6 +932,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       quotagroup: zName.describe("Name of the quota group"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/quota/groups/${params.quotagroup}`);
@@ -908,6 +951,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       quotagroup: zName.describe("Name of the quota group"),
       quotarule: zName.describe("Name of the quota rule to add"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/admin/quota/groups/${params.quotagroup}/rules/${params.quotarule}`);
@@ -926,6 +970,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       quotagroup: zName.describe("Name of the quota group"),
       quotarule: zName.describe("Name of the quota rule to remove"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/quota/groups/${params.quotagroup}/rules/${params.quotarule}`);
@@ -943,6 +988,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       quotagroup: zName.describe("Name of the quota group"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/quota/groups/${params.quotagroup}/users`);
@@ -961,6 +1007,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       quotagroup: zName.describe("Name of the quota group"),
       username: zOwner.describe("Username of the user to add"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/admin/quota/groups/${params.quotagroup}/users/${params.username}`);
@@ -979,6 +1026,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       quotagroup: zName.describe("Name of the quota group"),
       username: zOwner.describe("Username of the user to remove"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/quota/groups/${params.quotagroup}/users/${params.username}`);
@@ -994,6 +1042,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "admin_list_quota_rules",
     "List the available quota rules (requires admin privileges)",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/admin/quota/rules");
@@ -1013,6 +1062,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       limit: z.number().int().optional().describe("The limit set by the rule, in bytes (-1 for unlimited)"),
       subjects: z.array(z.string().max(255)).optional().describe("The subjects affected by the rule (e.g. size:all, size:repos:all)"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/admin/quota/rules", {
@@ -1034,6 +1084,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       quotarule: zName.describe("Name of the quota rule"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/quota/rules/${params.quotarule}`);
@@ -1053,6 +1104,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       limit: z.number().int().optional().describe("The limit set by the rule, in bytes (-1 for unlimited)"),
       subjects: z.array(z.string().max(255)).optional().describe("The subjects affected by the rule"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/admin/quota/rules/${params.quotarule}`, {
@@ -1073,6 +1125,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       quotarule: zName.describe("Name of the quota rule"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/quota/rules/${params.quotarule}`);
@@ -1090,6 +1143,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     {
       username: zOwner.describe("Username of the user"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/users/${params.username}/quota`);
@@ -1108,6 +1162,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
       username: zOwner.describe("Username of the user"),
       groups: z.array(zName).describe("Quota groups the user shall have"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/admin/users/${params.username}/quota/groups`, {
@@ -1127,6 +1182,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_api_settings",
     "Get the instance's global settings for the API",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/settings/api");
@@ -1142,6 +1198,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_attachment_settings",
     "Get the instance's global settings for attachments",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/settings/attachment");
@@ -1157,6 +1214,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_repository_settings",
     "Get the instance's global settings for repositories",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/settings/repository");
@@ -1172,6 +1230,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_ui_settings",
     "Get the instance's global settings for the UI",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/settings/ui");
@@ -1189,6 +1248,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_signing_key_gpg",
     "Get the instance's default GPG signing key",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.getRaw("/signing-key.gpg");
@@ -1204,6 +1264,7 @@ export function registerAdminTools(server: McpServer, client: ForgejoClient): vo
     "get_signing_key_ssh",
     "Get the instance's default SSH signing key",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.getRaw("/signing-key.ssh");

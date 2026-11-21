@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zPage, zLimit, zId, zTitle, zBody, zVisibility, zPermission, zSearchQuery } from "../validation.js";
 
 export function registerOrganizationTools(server: McpServer, client: ForgejoClient): void {
@@ -13,6 +13,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/orgs", {
@@ -33,6 +34,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     {
       org: zOwner.describe("Name of the organization"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}`);
@@ -53,6 +55,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       description: zBody.optional().describe("Description of the organization"),
       visibility: zVisibility.describe("Visibility of the organization: public, limited, or private"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/orgs", {
@@ -78,6 +81,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       description: zBody.optional().describe("Description of the organization"),
       visibility: zVisibility.describe("Visibility of the organization: public, limited, or private"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/orgs/${params.org}`, {
@@ -99,6 +103,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     {
       org: zOwner.describe("Name of the organization to delete"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}`);
@@ -118,6 +123,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/repos`, {
@@ -140,6 +146,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/members`, {
@@ -162,6 +169,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/teams`, {
@@ -182,6 +190,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     {
       id: zId.describe("ID of the team"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}`);
@@ -206,6 +215,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
         .optional()
         .describe("List of unit types the team has access to (e.g. repo.code, repo.issues)"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         // Forgejo returns a 500 when `units` is omitted for read/write teams,
@@ -247,6 +257,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       id: zId.describe("ID of the team"),
       username: zOwner.describe("Username of the user to add"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/teams/${params.id}/members/${params.username}`);
@@ -265,6 +276,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       id: zId.describe("ID of the team"),
       username: zOwner.describe("Username of the user to remove"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/teams/${params.id}/members/${params.username}`);
@@ -284,6 +296,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/labels`, {
@@ -306,6 +319,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/hooks`, {
@@ -332,6 +346,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(2048).optional().describe("Authorization header sent with the webhook"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/orgs/${params.org}/hooks`, {
@@ -357,6 +372,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       id: zId.describe("Hook ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/hooks/${params.id}`);
@@ -380,6 +396,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(2048).optional().describe("Authorization header sent with the webhook"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/orgs/${params.org}/hooks/${params.id}`, {
@@ -404,6 +421,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       id: zId.describe("Hook ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/hooks/${params.id}`);
@@ -426,6 +444,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       exclusive: z.boolean().optional().describe("Whether the label is exclusive within its scope"),
       is_archived: z.boolean().optional().describe("Whether the label is archived"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/orgs/${params.org}/labels`, {
@@ -450,6 +469,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       id: zId.describe("Label ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/labels/${params.id}`);
@@ -473,6 +493,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       exclusive: z.boolean().optional().describe("Whether the label is exclusive within its scope"),
       is_archived: z.boolean().optional().describe("Whether the label is archived"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/orgs/${params.org}/labels/${params.id}`, {
@@ -497,6 +518,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       id: zId.describe("Label ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/labels/${params.id}`);
@@ -515,6 +537,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/members/${params.username}`);
@@ -533,6 +556,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/members/${params.username}`);
@@ -552,6 +576,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/public_members`, {
@@ -573,6 +598,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/public_members/${params.username}`);
@@ -591,6 +617,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/orgs/${params.org}/public_members/${params.username}`);
@@ -609,6 +636,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/public_members/${params.username}`);
@@ -628,6 +656,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/list_blocked`, {
@@ -649,6 +678,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/orgs/${params.org}/block/${params.username}`);
@@ -667,6 +697,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/orgs/${params.org}/unblock/${params.username}`);
@@ -684,6 +715,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     {
       org: zOwner.describe("Organization name"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/quota`);
@@ -703,6 +735,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/quota/artifacts`, {
@@ -725,6 +758,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/quota/attachments`, {
@@ -747,6 +781,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/quota/packages`, {
@@ -768,6 +803,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       subject: z.string().min(1).max(255).describe("Quota subject to check, e.g. size:all, size:repos:all, size:git:all, size:assets:packages:all"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/quota/check`, {
@@ -788,6 +824,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       new_name: zOwner.describe("New organization name"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/orgs/${params.org}/rename`, {
@@ -811,6 +848,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/teams/search`, {
@@ -836,6 +874,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/activities/feeds`, {
@@ -860,6 +899,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}/activities/feeds`, {
@@ -888,6 +928,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       units: z.array(z.string()).optional().describe("Repository units the team can access, e.g. repo.code, repo.issues"),
       units_map: z.record(z.string()).optional().describe("Map of repository unit to permission, e.g. { \"repo.code\": \"write\" }"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/teams/${params.id}`, {
@@ -913,6 +954,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
     {
       id: zId.describe("Team ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/teams/${params.id}`);
@@ -932,6 +974,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}/members`, {
@@ -953,6 +996,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       id: zId.describe("Team ID"),
       username: zOwner.describe("Username"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}/members/${params.username}`);
@@ -972,6 +1016,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}/repos`, {
@@ -994,6 +1039,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/teams/${params.id}/repos/${params.org}/${params.repo}`);
@@ -1013,6 +1059,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       repo: zRepo,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/teams/${params.id}/repos/${params.org}/${params.repo}`);
@@ -1032,6 +1079,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/teams/${params.id}/repos/${params.org}/${params.repo}`);
@@ -1050,6 +1098,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/orgs", {
@@ -1071,6 +1120,7 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       username: zOwner.describe("Username"),
       org: zOwner.describe("Organization name"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/orgs/${params.org}/permissions`);

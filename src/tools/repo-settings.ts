@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError, encodePath } from "./helpers.js";
+import { formatResponse, formatError, encodePath, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import {
   zOwner,
   zRepo,
@@ -78,6 +78,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -100,6 +101,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Webhook ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -126,6 +128,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       authorization_header: z.string().max(4096).optional().describe("Authorization header value sent with each delivery"),
       active: z.boolean().optional().describe("Whether the hook is active"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -160,6 +163,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       authorization_header: z.string().max(4096).optional().describe("Authorization header value sent with each delivery"),
       active: z.boolean().optional().describe("Whether the hook is active"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(
@@ -188,6 +192,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Webhook ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -210,6 +215,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       id: zId.describe("Webhook ID"),
       ref: zRef.optional().describe("Git ref to use for the test payload (defaults to the default branch)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -232,6 +238,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -253,6 +260,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       name: zRuleName,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -275,6 +283,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       rule_name: z.string().min(1).max(255).describe("Rule name / branch name pattern (e.g. main or release/*)"),
       ...branchProtectionFields,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, ...body } = params;
@@ -299,6 +308,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       name: zRuleName,
       ...branchProtectionFields,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, name, ...body } = params;
@@ -322,6 +332,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       name: zRuleName,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -342,6 +353,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -363,6 +375,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Tag protection ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -386,6 +399,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       whitelist_usernames: z.array(z.string()).optional().describe("Usernames allowed to create matching tags"),
       whitelist_teams: z.array(z.string()).optional().describe("Team names allowed to create matching tags"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -415,6 +429,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       whitelist_usernames: z.array(z.string()).optional().describe("Usernames allowed to create matching tags"),
       whitelist_teams: z.array(z.string()).optional().describe("Team names allowed to create matching tags"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(
@@ -441,6 +456,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Tag protection ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -465,6 +481,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -492,6 +509,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Deploy key ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -515,6 +533,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       key: z.string().min(1).max(16384).describe("Armored SSH public key"),
       read_only: z.boolean().optional().describe("Whether the key has read-only access (default: true)"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -541,6 +560,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       id: zId.describe("Deploy key ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -563,6 +583,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -585,6 +606,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       name: zName.describe("Remote name of the push mirror"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -612,6 +634,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       use_ssh: z.boolean().optional().describe("Authenticate with a generated SSH keypair instead of username/password"),
       branch_filter: z.string().max(4096).optional().describe("Comma-separated branch globs to mirror"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -642,6 +665,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       name: zName.describe("Remote name of the push mirror"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -662,6 +686,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -682,6 +707,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -702,6 +728,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -722,6 +749,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -743,6 +771,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       team: zName.describe("Team name"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -764,6 +793,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       team: zName.describe("Team name"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -785,6 +815,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       team: zName.describe("Team name"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -807,6 +838,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -829,6 +861,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       page_name: zWikiPage,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -852,6 +885,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       content_base64: z.string().max(10_485_760).describe("Base64 encoded page content (Markdown)"),
       message: zTitle.optional().describe("Commit message"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -881,6 +915,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       content_base64: z.string().max(10_485_760).optional().describe("Base64 encoded new page content (Markdown)"),
       message: zTitle.optional().describe("Commit message"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(
@@ -907,6 +942,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       page_name: zWikiPage,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -929,6 +965,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       page_name: zWikiPage,
       page: zPage,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -967,6 +1004,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       lfs: z.boolean().optional().describe("Migrate LFS objects"),
       lfs_endpoint: z.string().max(2048).optional().describe("Custom LFS endpoint URL"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1020,6 +1058,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       avatar: z.boolean().optional().describe("Include the template's avatar"),
       protected_branch: z.boolean().optional().describe("Include the template's branch protections"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1055,6 +1094,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       branch: zRef.optional().describe("Fork branch to sync (defaults to the default branch)"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1076,6 +1116,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       branch: zRef.optional().describe("Fork branch to sync (defaults to the default branch)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1096,6 +1137,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1116,6 +1158,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1136,6 +1179,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1157,6 +1201,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       flags: z.array(zName).describe("Flags to set on the repository"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -1178,6 +1223,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -1199,6 +1245,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       flag: zName.describe("Flag name"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1220,6 +1267,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       flag: zName.describe("Flag name"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -1241,6 +1289,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       repo: zRepo,
       flag: zName.describe("Flag name"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(
@@ -1261,6 +1310,7 @@ export function registerRepoSettingsTools(server: McpServer, client: ForgejoClie
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.getRaw(

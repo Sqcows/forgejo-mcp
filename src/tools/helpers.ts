@@ -1,10 +1,50 @@
 import { ForgejoApiError } from "../client.js";
 import type { ForgejoClient } from "../client.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 
 export type ToolHandler<TInput, TOutput> = (
   client: ForgejoClient,
   input: TInput
 ) => Promise<TOutput>;
+
+/**
+ * Behavioural hints (MCP ToolAnnotations) shared by the tool registrations.
+ * Every field is set explicitly: an unset field falls back to the protocol
+ * default (readOnly false, destructive true, idempotent false, openWorld true),
+ * and clients must assume the worst about an absent hint.
+ *
+ * Policies:
+ * - readOnlyHint is true only for tools that never modify Forgejo state: the
+ *   GET/getRaw tools, plus render_markdown/render_markup, which are POSTs that
+ *   only render text. A read-only tool is also idempotent by definition.
+ * - destructiveHint follows the specification strictly: false only when the
+ *   tool performs purely additive updates, so edits, replacements, merges and
+ *   removals are destructive. Read-only tools change nothing, hence false.
+ * - idempotentHint is false for every state-changing tool unless a repeated
+ *   identical call is verified to have no further effect upstream; it must
+ *   never be inferred from the HTTP verb alone.
+ * - openWorldHint is true for every tool that talks to the Forgejo instance.
+ */
+export const READ_ONLY_TOOL: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+
+export const ADDITIVE_TOOL: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+export const DESTRUCTIVE_TOOL: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
 
 /**
  * Encode a slash-separated value (file path, branch, tag, ref) for use in a

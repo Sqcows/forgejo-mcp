@@ -14,7 +14,7 @@
 
 ## Adding New Tools
 1. Find the appropriate file in `src/tools/`
-2. Add your tool using `server.tool(name, description, schema, handler)`
+2. Add your tool using `server.tool(name, description, schema, annotations, handler)`, passing one of the annotation presets from `tools/helpers.ts` (`READ_ONLY_TOOL`, `ADDITIVE_TOOL` or `DESTRUCTIVE_TOOL`). See the "Tool annotations" section of `CLAUDE.md` for the classification rules; all four hints must be set
 3. Add tests in `src/__tests__/tools/`
 4. Update the README tools table
 

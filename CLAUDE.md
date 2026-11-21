@@ -35,7 +35,7 @@ Entry point (index.ts or http.ts)
 - **`compact.ts`** — Wraps the SDK's `tools/list` handler to strip validation-only schema keywords and boilerplate from the tool list sent to clients (saves context; Zod validation is unchanged). The compacted list is cached by a key that `server.ts` supplies per request, which must identify the tools currently enabled (in lazy mode this includes the loaded areas)
 - **`config.ts`** — `resolveConfig()` merges CLI args > env vars > defaults. Tool areas (`TOOL_AREAS`) can be disabled with `--disable-<area>` / `--disable a,b` or `FORGEJO_DISABLED_AREAS`; `server.ts` skips those groups. `validateBaseUrl()` blocks SSRF (cloud metadata IPs, private ranges)
 - **`validation.ts`** — Centralized Zod schemas (`zOwner`, `zRepo`, `zFilePath`, `zPage`, `zLimit`, etc.) shared across all tool files
-- **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format; `encodePath(value)` percent-encodes a slash-separated value for use in a request path
+- **`tools/helpers.ts`** — `formatResponse(data)` and `formatError(err)` produce the MCP content format; `encodePath(value)` percent-encodes a slash-separated value for use in a request path; `READ_ONLY_TOOL` / `ADDITIVE_TOOL` / `DESTRUCTIVE_TOOL` are the shared MCP `ToolAnnotations` presets passed at registration
 - **`http.ts`** — HTTP transport: one `McpServer` + transport per client session (LRU-capped), `RateLimiter` class, optional Bearer auth (`FORGEJO_MCP_API_KEY`), `Origin` check when unauthenticated, security headers, `/health` endpoint
 
 ### Tool Registration Pattern
@@ -47,6 +47,7 @@ server.tool(
   "tool_name",           // snake_case identifier
   "Description",         // shown in MCP UI
   { owner: zOwner, repo: zRepo, ...params },  // Zod schemas (raw shape, NOT wrapped in z.object)
+  READ_ONLY_TOOL,        // annotations preset (see below)
   async (params) => {
     const { owner, repo, ...query } = params;
     const result = await client.get(`/repos/${owner}/${repo}`, query);
@@ -56,6 +57,17 @@ server.tool(
 ```
 
 The Zod schemas are passed as a raw object shape — the MCP SDK wraps them in `z.object()` internally.
+
+### Tool annotations
+
+Every registration passes one of the `ToolAnnotations` presets from `tools/helpers.ts` (all four hints are always set explicitly, because unset hints fall back to worst-case protocol defaults):
+
+- `READ_ONLY_TOOL` — tools that never modify Forgejo state (GET/getRaw tools, plus `render_markdown`/`render_markup`, which are read-only POSTs). Reads are idempotent by definition.
+- `ADDITIVE_TOOL` — purely additive creations (`create_repo`, `create_issue`, adding a label or reaction). Destructive false, idempotent false.
+- `DESTRUCTIVE_TOOL` — every non-additive change: edits, replacements, merges, removals and commands with potentially non-additive effects (`merge_pull_request`, `dispatch_workflow`, `sync_fork`, `admin_run_cron_job`). Follows the spec strictly: destructive false is reserved for additive-only operations.
+- `openWorldHint` is true for every Forgejo API tool; only the lazy loader (`load_tool_area`, in `server.ts`) is false, because it changes local MCP session state only.
+
+`idempotentHint` stays false for state-changing tools unless a repeated identical call is verified against Forgejo source to cause no further effect; do not infer it from the HTTP verb. The one verified exception is `get_runner_registration_token` (`{ ...DESTRUCTIVE_TOOL, idempotentHint: true }`). Annotations are hints, not authorisation controls.
 
 ### Testing Pattern
 

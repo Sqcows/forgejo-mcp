@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zPage, zLimit, zId, zName, zRef, zSha, zTitle, zBody, zSecretName } from "../validation.js";
 
 const zRunStatus = z.enum(["unknown", "waiting", "running", "success", "failure", "cancelled", "skipped", "blocked"]);
@@ -28,6 +28,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -59,6 +60,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       run_id: zId.describe("ID of the workflow run"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/actions/runs/${params.run_id}`);
@@ -78,6 +80,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       run_id: zId.describe("ID of the workflow run"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/repos/${params.owner}/${params.repo}/actions/runs/${params.run_id}`);
@@ -97,6 +100,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       run_id: zId.describe("ID of the workflow run"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(`/repos/${params.owner}/${params.repo}/actions/runs/${params.run_id}/cancel`);
@@ -116,6 +120,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       run_id: zId.describe("ID of the workflow run"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/actions/runs/${params.run_id}/jobs`);
@@ -136,6 +141,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       job_id: zId.describe("ID of the workflow job"),
       attempt: z.number().int().positive().optional().describe("1-based attempt number; omit to fetch the latest attempt"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.getRaw(
@@ -161,6 +167,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -189,6 +196,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -215,6 +223,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       artifact_id: zId.describe("ID of the artifact"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/actions/artifacts/${params.artifact_id}`);
@@ -234,6 +243,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       artifact_id: zId.describe("ID of the artifact"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/repos/${params.owner}/${params.repo}/actions/artifacts/${params.artifact_id}`);
@@ -255,6 +265,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -284,6 +295,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       inputs: z.record(z.string()).optional().describe("Input keys and values configured in the workflow file"),
       return_run_info: z.boolean().optional().describe("Return information about the created run"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -313,6 +325,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -339,6 +352,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       secretname: zSecretName.describe("Name of the secret"),
       data: zSecretData.describe("Secret value. Line endings are normalized to LF; Base64-encode the data if they must be retained"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -361,6 +375,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       secretname: zSecretName.describe("Name of the secret"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/repos/${params.owner}/${params.repo}/actions/secrets/${params.secretname}`);
@@ -383,6 +398,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -408,6 +424,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       variablename: zSecretName.describe("Name of the variable"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/actions/variables/${params.variablename}`);
@@ -428,6 +445,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       variablename: zSecretName.describe("Name of the variable"),
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -452,6 +470,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
       name: zSecretName.optional().describe("New name for the variable (converted to uppercase by Forgejo)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -477,6 +496,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       variablename: zSecretName.describe("Name of the variable"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/repos/${params.owner}/${params.repo}/actions/variables/${params.variablename}`);
@@ -500,6 +520,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -526,6 +547,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       runner_id: zId.describe("ID of the runner"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/actions/runners/${params.runner_id}`);
@@ -547,6 +569,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       description: zBody.optional().describe("Description of the runner"),
       ephemeral: z.boolean().optional().describe("Register as an ephemeral runner"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -573,6 +596,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       runner_id: zId.describe("ID of the runner"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/repos/${params.owner}/${params.repo}/actions/runners/${params.runner_id}`);
@@ -592,6 +616,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       repo: zRepo,
       labels: z.string().max(1024).optional().describe("Comma-separated list of run job labels to search for"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -616,6 +641,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -641,6 +667,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       secretname: zSecretName.describe("Name of the secret"),
       data: zSecretData.describe("Secret value. Line endings are normalized to LF; Base64-encode the data if they must be retained"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -662,6 +689,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       secretname: zSecretName.describe("Name of the secret"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/actions/secrets/${params.secretname}`);
@@ -683,6 +711,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -707,6 +736,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       variablename: zSecretName.describe("Name of the variable"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/actions/variables/${params.variablename}`);
@@ -726,6 +756,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       variablename: zSecretName.describe("Name of the variable"),
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -749,6 +780,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
       name: zSecretName.optional().describe("New name for the variable (converted to uppercase by Forgejo)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -773,6 +805,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       variablename: zSecretName.describe("Name of the variable"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/actions/variables/${params.variablename}`);
@@ -795,6 +828,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -820,6 +854,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       runner_id: zId.describe("ID of the runner"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/orgs/${params.org}/actions/runners/${params.runner_id}`);
@@ -840,6 +875,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       description: zBody.optional().describe("Description of the runner"),
       ephemeral: z.boolean().optional().describe("Register as an ephemeral runner"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -865,6 +901,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       runner_id: zId.describe("ID of the runner"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/orgs/${params.org}/actions/runners/${params.runner_id}`);
@@ -883,6 +920,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       org: zOwner.describe("Organization name"),
       labels: z.string().max(1024).optional().describe("Comma-separated list of run job labels to search for"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -906,6 +944,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       secretname: zSecretName.describe("Name of the secret"),
       data: zSecretData.describe("Secret value. Line endings are normalized to LF; Base64-encode the data if they must be retained"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -926,6 +965,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       secretname: zSecretName.describe("Name of the secret"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/actions/secrets/${params.secretname}`);
@@ -946,6 +986,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -969,6 +1010,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       variablename: zSecretName.describe("Name of the variable"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/actions/variables/${params.variablename}`);
@@ -987,6 +1029,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       variablename: zSecretName.describe("Name of the variable"),
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1009,6 +1052,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       value: zBody.describe("Variable value. Line endings are normalized to LF"),
       name: zSecretName.optional().describe("New name for the variable (converted to uppercase by Forgejo)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(
@@ -1032,6 +1076,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       variablename: zSecretName.describe("Name of the variable"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/actions/variables/${params.variablename}`);
@@ -1053,6 +1098,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1077,6 +1123,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       runner_id: zId.describe("ID of the runner"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/actions/runners/${params.runner_id}`);
@@ -1096,6 +1143,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       description: zBody.optional().describe("Description of the runner"),
       ephemeral: z.boolean().optional().describe("Register as an ephemeral runner"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1120,6 +1168,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       runner_id: zId.describe("ID of the runner"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/actions/runners/${params.runner_id}`);
@@ -1137,6 +1186,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       labels: z.string().max(1024).optional().describe("Comma-separated list of run job labels to search for"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1161,6 +1211,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(
@@ -1185,6 +1236,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       runner_id: zId.describe("ID of the runner"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/admin/actions/runners/${params.runner_id}`);
@@ -1204,6 +1256,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
       description: zBody.optional().describe("Description of the runner"),
       ephemeral: z.boolean().optional().describe("Register as an ephemeral runner"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post(
@@ -1228,6 +1281,7 @@ export function registerActionsTools(server: McpServer, client: ForgejoClient): 
     {
       runner_id: zId.describe("ID of the runner"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/admin/actions/runners/${params.runner_id}`);

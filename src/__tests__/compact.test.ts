@@ -5,6 +5,12 @@ describe("compactToolList", () => {
   const tool = {
     name: "example",
     description: "Example tool",
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
     execution: { taskSupport: "forbidden" },
     inputSchema: {
       $schema: "http://json-schema.org/draft-07/schema#",
@@ -44,6 +50,8 @@ describe("compactToolList", () => {
   it("keeps what the model needs to call the tool", () => {
     expect(compacted.name).toBe("example");
     expect(compacted.description).toBe("Example tool");
+    // Behavioural annotations pass through untouched: only input schemas are compacted
+    expect(compacted.annotations).toEqual(tool.annotations);
     expect(compacted.inputSchema.required).toEqual(["owner"]);
     expect(compacted.inputSchema.properties.limit).toEqual({ type: "integer", minimum: 1, maximum: 50 });
     expect(compacted.inputSchema.properties.state).toEqual({
@@ -59,6 +67,12 @@ describe("compactToolList", () => {
 
   it("does not mutate the original tool", () => {
     expect(tool.inputSchema.properties.owner.pattern).toBe("^[a-z]+$");
+    expect(tool.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    });
     expect(tool.execution).toBeDefined();
   });
 

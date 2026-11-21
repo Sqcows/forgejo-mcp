@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zPage, zLimit, zId, zTitle, zBody, zSearchQuery } from "../validation.js";
 
 export function registerUserTools(server: McpServer, client: ForgejoClient): void {
@@ -10,6 +10,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "get_authenticated_user",
     "Get the currently authenticated user",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/user");
@@ -27,6 +28,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username of the user"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}`);
@@ -46,6 +48,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/repos`, {
@@ -68,6 +71,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/orgs`, {
@@ -90,6 +94,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/users/search", {
@@ -113,6 +118,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/followers`, {
@@ -135,6 +141,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/following`, {
@@ -157,6 +164,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/starred`, {
@@ -178,6 +186,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/starred", {
@@ -199,6 +208,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       owner: zOwner,
       repo: zRepo,
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/user/starred/${params.owner}/${params.repo}`);
@@ -217,6 +227,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       owner: zOwner,
       repo: zRepo,
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/starred/${params.owner}/${params.repo}`);
@@ -239,6 +250,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
         .optional()
         .describe("Filter by status type: unread, read, or pinned"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/notifications", {
@@ -258,6 +270,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "mark_notifications_read",
     "Mark all notifications as read for the authenticated user",
     {},
+    DESTRUCTIVE_TOOL,
     async () => {
       try {
         const data = await client.put("/notifications");
@@ -273,6 +286,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "check_new_notifications",
     "Check if the authenticated user has unread notifications (returns the unread count)",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/notifications/new");
@@ -290,6 +304,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("Notification thread ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/notifications/threads/${params.id}`);
@@ -308,6 +323,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       id: zId.describe("Notification thread ID"),
       to_status: z.enum(["read", "unread", "pinned"]).optional().describe("Status to mark the thread as (default: read)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/notifications/threads/${params.id}`, undefined, {
@@ -335,6 +351,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/repos/${params.owner}/${params.repo}/notifications`, {
@@ -365,6 +382,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       to_status: z.enum(["read", "unread", "pinned"]).optional().describe("Status to mark notifications as (default: read)"),
       last_read_at: z.string().max(64).optional().describe("Only mark notifications updated before this time (RFC 3339, default: now)"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/repos/${params.owner}/${params.repo}/notifications`, undefined, {
@@ -388,6 +406,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/followers", {
@@ -409,6 +428,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/following", {
@@ -429,6 +449,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/following/${params.username}`);
@@ -446,6 +467,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/user/following/${params.username}`);
@@ -463,6 +485,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/following/${params.username}`);
@@ -481,6 +504,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       username: zOwner.describe("Username"),
       target: zOwner.describe("Username of the user who may be followed"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/following/${params.target}`);
@@ -496,6 +520,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "list_my_emails",
     "List all email addresses of the authenticated user",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/user/emails");
@@ -513,6 +538,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       emails: z.array(z.string().email().max(254)).min(1).describe("Email addresses"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/user/emails", {
@@ -532,6 +558,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       emails: z.array(z.string().email().max(254)).min(1).describe("Email addresses"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete("/user/emails", {
@@ -553,6 +580,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/keys", {
@@ -576,6 +604,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       key: z.string().min(1).max(16384).describe("Armored SSH public key"),
       read_only: z.boolean().optional().describe("Whether the key has only read access"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/user/keys", {
@@ -597,6 +626,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("Key ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/keys/${params.id}`);
@@ -614,6 +644,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("Key ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/keys/${params.id}`);
@@ -634,6 +665,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/keys`, {
@@ -656,6 +688,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/gpg_keys", {
@@ -677,6 +710,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       armored_public_key: z.string().min(1).max(65536).describe("Armored GPG public key"),
       armored_signature: z.string().max(65536).optional().describe("Armored signature of the verification token, to verify the key"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/user/gpg_keys", {
@@ -697,6 +731,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("GPG key ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/gpg_keys/${params.id}`);
@@ -714,6 +749,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("GPG key ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/gpg_keys/${params.id}`);
@@ -729,6 +765,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "get_gpg_key_verification_token",
     "Get a token to sign in order to verify a GPG key",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/user/gpg_key_token");
@@ -747,6 +784,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       key_id: z.string().min(1).max(255).describe("ID of the GPG key to verify"),
       armored_signature: z.string().max(65536).optional().describe("Armored signature of the verification token"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/user/gpg_key_verify", {
@@ -769,6 +807,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/gpg_keys`, {
@@ -790,6 +829,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/hooks", {
@@ -815,6 +855,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(2048).optional().describe("Authorization header sent with the webhook"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.post("/user/hooks", {
@@ -839,6 +880,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("Hook ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/hooks/${params.id}`);
@@ -861,6 +903,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       branch_filter: z.string().max(255).optional().describe("Branch filter glob"),
       authorization_header: z.string().max(2048).optional().describe("Authorization header sent with the webhook"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch(`/user/hooks/${params.id}`, {
@@ -884,6 +927,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       id: zId.describe("Hook ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.delete(`/user/hooks/${params.id}`);
@@ -902,6 +946,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/list_blocked", {
@@ -922,6 +967,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/user/block/${params.username}`);
@@ -939,6 +985,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/user/unblock/${params.username}`);
@@ -954,6 +1001,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "get_my_quota",
     "Get quota information for the authenticated user",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/user/quota");
@@ -972,6 +1020,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/quota/artifacts", {
@@ -993,6 +1042,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/quota/attachments", {
@@ -1014,6 +1064,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/quota/packages", {
@@ -1034,6 +1085,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       subject: z.string().min(1).max(255).describe("Quota subject to check, e.g. size:all, size:repos:all, size:git:all, size:assets:packages:all"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/quota/check", {
@@ -1055,6 +1107,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       limit: zLimit,
       order_by: z.enum(["name", "id", "newest", "oldest", "recentupdate", "leastupdate", "reversealphabetically", "alphabetically", "reversesize", "size", "reversegitsize", "gitsize", "reverselfssize", "lfssize", "moststars", "feweststars", "mostforks", "fewestforks"]).optional().describe("Order the repositories by this attribute"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/repos", {
@@ -1074,6 +1127,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     "get_my_settings",
     "Get the authenticated user's account settings",
     {},
+    READ_ONLY_TOOL,
     async () => {
       try {
         const data = await client.get("/user/settings");
@@ -1102,6 +1156,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       hide_pronouns: z.boolean().optional().describe("Hide pronouns from the profile"),
       enable_repo_unit_hints: z.boolean().optional().describe("Show hints about enabling repository units"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.patch("/user/settings", {
@@ -1133,6 +1188,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/user/starred/${params.owner}/${params.repo}`);
@@ -1151,6 +1207,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/stopwatches", {
@@ -1172,6 +1229,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/subscriptions", {
@@ -1194,6 +1252,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/subscriptions`, {
@@ -1215,6 +1274,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/teams", {
@@ -1238,6 +1298,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       since: z.string().max(64).optional().describe("Only show items updated after this time (RFC 3339)"),
       before: z.string().max(64).optional().describe("Only show items updated before this time (RFC 3339)"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get("/user/times", {
@@ -1264,6 +1325,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/activities/feeds`, {
@@ -1286,6 +1348,7 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const data = await client.get(`/users/${params.username}/heatmap`);

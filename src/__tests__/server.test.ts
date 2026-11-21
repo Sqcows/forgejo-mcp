@@ -3,6 +3,27 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createServer, LOAD_TOOL_AREA } from "../server.js";
 import { TOOL_AREAS, type ForgejoConfig } from "../config.js";
 
+// Expected ToolAnnotations, written out independently of the presets in
+// tools/helpers.ts so a wrong preset or a misassigned registration fails here
+const READ_ONLY_ANNOTATIONS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+const ADDITIVE_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+const DESTRUCTIVE_ANNOTATIONS = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
 describe("createServer", () => {
   const dummyConfig = {
     baseUrl: "https://forgejo.example.com",
@@ -108,6 +129,53 @@ describe("createServer", () => {
       required: ["owner", "repo"],
     });
     expect(getRepo.execution).toBeUndefined();
+    expect(getRepo.annotations).toEqual(READ_ONLY_ANNOTATIONS);
+  });
+
+  it("annotates every Forgejo API tool with the four behavioural hints", async () => {
+    const server = createServer(dummyConfig);
+    const handler = (server.server as any)._requestHandlers.get("tools/list");
+    const { tools } = await handler({ method: "tools/list" }, {});
+    expect(tools.length).toBe(457);
+
+    for (const tool of tools) {
+      const { readOnlyHint, destructiveHint, idempotentHint, openWorldHint } = tool.annotations;
+      expect(typeof readOnlyHint).toBe("boolean");
+      expect(typeof destructiveHint).toBe("boolean");
+      expect(typeof idempotentHint).toBe("boolean");
+      // Every tool talks to the configured Forgejo instance
+      expect(openWorldHint).toBe(true);
+    }
+
+    const byName = new Map(tools.map((tool: any) => [tool.name, tool]));
+    const expectAnnotations = (name: string, expected: object) =>
+      expect(byName.get(name).annotations).toEqual(expected);
+
+    // Representatives of each classification: a read, an additive creation,
+    // an edit, a deletion, a merge, a workflow trigger, and a read-only POST
+    expectAnnotations("get_repo", READ_ONLY_ANNOTATIONS);
+    expectAnnotations("create_repo", ADDITIVE_ANNOTATIONS);
+    expectAnnotations("update_file", DESTRUCTIVE_ANNOTATIONS);
+    expectAnnotations("delete_repo", DESTRUCTIVE_ANNOTATIONS);
+    expectAnnotations("merge_pull_request", DESTRUCTIVE_ANNOTATIONS);
+    expectAnnotations("dispatch_workflow", DESTRUCTIVE_ANNOTATIONS);
+    expectAnnotations("render_markdown", READ_ONLY_ANNOTATIONS);
+
+    // The only mutation verified (against Forgejo source) to converge on
+    // repeat: GetOrCreateActiveRunnerToken reads when an active token exists,
+    // and may deactivate prior tokens when it creates a replacement
+    expectAnnotations("get_runner_registration_token", {
+      ...DESTRUCTIVE_ANNOTATIONS,
+      idempotentHint: true,
+    });
+
+    // Guard the conservative idempotency policy: no other mutation may claim it
+    const idempotentMutations = tools.filter(
+      (tool: any) => !tool.annotations.readOnlyHint && tool.annotations.idempotentHint
+    );
+    expect(idempotentMutations.map((tool: any) => tool.name)).toEqual([
+      "get_runner_registration_token",
+    ]);
   });
 
   it("skips disabled tool areas and omits them from the instructions", () => {
@@ -185,6 +253,28 @@ describe("lazy mode", () => {
     expect(tools[0].inputSchema.properties.areas.items.enum).toEqual([...TOOL_AREAS]);
     expect(tools[0].description).toContain("repo-settings (webhooks");
     expect(tools[0].description).toContain("admin (user administration");
+    // The loader mutates local session state only, is a no-op once loaded,
+    // and reaches nothing outside this server
+    expect(tools[0].annotations).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it("gives loaded tools the same annotations as normal mode", async () => {
+    const server = createServer(lazyConfig);
+    await callTool(server, LOAD_TOOL_AREA, { areas: ["repository"] });
+
+    const handler = (server.server as any)._requestHandlers.get("tools/list");
+    const { tools } = await handler({ method: "tools/list" }, {});
+    const byName = new Map(tools.map((tool: any) => [tool.name, tool]));
+
+    expect(byName.get("get_repo").annotations).toEqual(READ_ONLY_ANNOTATIONS);
+    expect(byName.get("create_repo").annotations).toEqual(ADDITIVE_ANNOTATIONS);
+    expect(byName.get("delete_repo").annotations).toEqual(DESTRUCTIVE_ANNOTATIONS);
+    expect(byName.get("get_runner_registration_token")).toBeUndefined();
   });
 
   it("tells the model to load areas first instead of listing categories", () => {

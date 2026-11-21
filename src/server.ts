@@ -167,6 +167,14 @@ function installToolLoader(
     "Load the tools for one or more areas of the Forgejo API. No other tools are available until their area is loaded. " +
       `Areas: ${groups.map((group) => `${group.area} (${group.summary})`).join("; ")}`,
     { areas: z.array(z.enum(areas)).min(1).describe("Areas to load") },
+    {
+      // Changes local MCP session state (enables tools), not Forgejo state;
+      // an already loaded area is a no-op, and it calls no external system
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
     async ({ areas: requested }, extra) => {
       const added = [...new Set(requested)].filter((area) => !loaded.has(area));
       if (added.length === 0) {

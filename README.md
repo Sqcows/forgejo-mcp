@@ -101,6 +101,17 @@ docker run -p 3000:3000 \
 
 Area names are case-insensitive. An unknown name stops the server at startup with a list of the valid areas, so a typo cannot silently leave an area enabled.
 
+### Tool annotations
+
+Every tool advertises the MCP `ToolAnnotations` behavioural hints, so clients can tell at a glance which calls only read data:
+
+- `readOnlyHint: true` for the 240 tools that never modify Forgejo state (all GET-based tools, plus `render_markdown`/`render_markup`, which are POSTs that only render text).
+- `destructiveHint: false` only for purely additive operations (creations such as `create_repo`). Edits, replacements, merges and deletions are marked destructive, following the specification's meaning of "may perform destructive updates".
+- `idempotentHint` is `true` for read-only tools; state-changing tools keep `false` unless a repeated identical call is verified to have no further effect upstream (currently only the deprecated `get_runner_registration_token`).
+- `openWorldHint: true` for every tool that talks to the Forgejo instance.
+
+Annotations are advisory hints from the server, not an authorisation or safety control: clients should still apply their own permission checks and confirm sensitive operations with the user.
+
 ### Lazy loading (`--lazy`)
 
 Lazy loading is **off by default**: unless you turn it on, every tool that is not in a disabled area is loaded at startup.

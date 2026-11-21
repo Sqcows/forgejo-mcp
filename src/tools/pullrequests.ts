@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ForgejoClient, ForgejoApiError } from "../client.js";
-import { formatResponse, formatError } from "./helpers.js";
+import { formatResponse, formatError, READ_ONLY_TOOL, ADDITIVE_TOOL, DESTRUCTIVE_TOOL } from "./helpers.js";
 import { zOwner, zRepo, zBranch, zFilePath, zPage, zLimit, zIndex, zId, zSha, zTitle, zBody, zState, zReviewEvent } from "../validation.js";
 
 const zMergeDo = z
@@ -27,6 +27,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -59,6 +60,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       index: zIndex.describe("Pull request number"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -87,6 +89,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       milestone: z.number().optional().describe("Milestone ID"),
       due_date: z.string().optional().describe("Due date in ISO 8601 format"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(
@@ -128,6 +131,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       unset_due_date: z.boolean().optional().describe("Remove the due date"),
       allow_maintainer_edit: z.boolean().optional().describe("Allow maintainers of the base repository to push to the head branch"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const result = await client.patch(
@@ -169,6 +173,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       force_merge: z.boolean().optional().describe("Merge even if checks or required approvals are not satisfied (requires permission)"),
       merge_when_checks_succeed: z.boolean().optional().describe("Schedule an auto merge once all checks succeed"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(
@@ -204,6 +209,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -235,6 +241,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -262,6 +269,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       index: zIndex.describe("Pull request number"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.getRaw(
@@ -285,6 +293,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       page: zPage,
       limit: zLimit,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -320,6 +329,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
         extra_lines_count: z.number().optional().describe("Number of additional lines after the commented line"),
       })).optional().describe("Inline comments on specific files"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(
@@ -349,6 +359,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       reviewers: z.array(z.string()).optional().describe("Usernames of requested reviewers"),
       team_reviewers: z.array(z.string()).optional().describe("Team names of requested reviewers"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(
@@ -375,6 +386,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       style: z.enum(["merge", "rebase"]).optional().describe("How to update the branch: merge (default) or rebase"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(
@@ -399,6 +411,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       binary: z.boolean().optional().describe("Whether to include binary file changes"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.getRaw(
@@ -421,6 +434,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       index: zIndex.describe("Pull request number"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         // The API answers 204 when merged and 404 when not merged
@@ -446,6 +460,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       index: zIndex.describe("Pull request number"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/merge`);
@@ -467,6 +482,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       reviewers: z.array(z.string()).optional().describe("Usernames of reviewers to remove"),
       team_reviewers: z.array(z.string()).optional().describe("Team names of reviewers to remove"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, ...body } = params;
@@ -488,6 +504,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       id: zId.describe("Review ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}`);
@@ -510,6 +527,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       body: zBody.optional().describe("Review body/comment"),
       event: zReviewEvent.describe("Review event: APPROVED, REQUEST_CHANGES, or COMMENT"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, id, ...body } = params;
@@ -531,6 +549,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       id: zId.describe("Review ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}`);
@@ -551,6 +570,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       id: zId.describe("Review ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}/comments`);
@@ -576,6 +596,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       old_position: z.number().int().min(0).optional().describe("Line number in the old file, or 0"),
       extra_lines_count: z.number().int().min(0).optional().describe("Number of additional lines after the commented line (0 = single line comment)"),
     },
+    ADDITIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, id, ...body } = params;
@@ -598,6 +619,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       id: zId.describe("Review ID"),
       comment: zId.describe("Comment ID"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}/comments/${params.comment}`);
@@ -619,6 +641,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       id: zId.describe("Review ID"),
       comment: zId.describe("Comment ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         await client.delete(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}/comments/${params.comment}`);
@@ -641,6 +664,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       message: zBody.optional().describe("Reason for dismissing the review"),
       priors: z.boolean().optional().describe("Also dismiss prior reviews by the same reviewer"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const { owner, repo, index, id, ...body } = params;
@@ -662,6 +686,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       index: zIndex.describe("Pull request number"),
       id: zId.describe("Review ID"),
     },
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const result = await client.post(`/repos/${params.owner}/${params.repo}/pulls/${params.index}/reviews/${params.id}/undismissals`);
@@ -682,6 +707,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       base: zBranch.describe("Base (target) branch"),
       head: zBranch.describe("Head (source) branch, or 'owner:branch' for a pull request from a fork"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(
@@ -702,6 +728,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       owner: zOwner,
       repo: zRepo,
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/pulls/pinned`);
@@ -721,6 +748,7 @@ export function registerPullRequestTools(server: McpServer, client: ForgejoClien
       repo: zRepo,
       sha: zSha.describe("Commit SHA"),
     },
+    READ_ONLY_TOOL,
     async (params) => {
       try {
         const result = await client.get(`/repos/${params.owner}/${params.repo}/commits/${params.sha}/pull`);
