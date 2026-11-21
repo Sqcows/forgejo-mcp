@@ -967,7 +967,9 @@ export function registerUserTools(server: McpServer, client: ForgejoClient): voi
     {
       username: zOwner.describe("Username"),
     },
-    ADDITIVE_TOOL,
+    // Upstream BlockUser also unfollows, unstars, unwatches, unassigns,
+    // removes collaborations and cancels pending transfers in one transaction
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/user/block/${params.username}`);

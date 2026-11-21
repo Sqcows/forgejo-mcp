@@ -152,13 +152,16 @@ describe("createServer", () => {
       expect(byName.get(name).annotations).toEqual(expected);
 
     // Representatives of each classification: a read, an additive creation,
-    // an edit, a deletion, a merge, a workflow trigger, and a read-only POST
+    // an edit, a deletion, a merge, a workflow trigger, a user block (which
+    // also removes follows, stars, watches, assignments, collaborations and
+    // pending transfers upstream), and a read-only POST
     expectAnnotations("get_repo", READ_ONLY_ANNOTATIONS);
     expectAnnotations("create_repo", ADDITIVE_ANNOTATIONS);
     expectAnnotations("update_file", DESTRUCTIVE_ANNOTATIONS);
     expectAnnotations("delete_repo", DESTRUCTIVE_ANNOTATIONS);
     expectAnnotations("merge_pull_request", DESTRUCTIVE_ANNOTATIONS);
     expectAnnotations("dispatch_workflow", DESTRUCTIVE_ANNOTATIONS);
+    expectAnnotations("block_user", DESTRUCTIVE_ANNOTATIONS);
     expectAnnotations("render_markdown", READ_ONLY_ANNOTATIONS);
 
     // The only mutation verified (against Forgejo source) to converge on

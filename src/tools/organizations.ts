@@ -678,7 +678,9 @@ export function registerOrganizationTools(server: McpServer, client: ForgejoClie
       org: zOwner.describe("Organization name"),
       username: zOwner.describe("Username"),
     },
-    ADDITIVE_TOOL,
+    // Upstream BlockUser also unfollows, unstars, unwatches, unassigns,
+    // removes collaborations and cancels pending transfers in one transaction
+    DESTRUCTIVE_TOOL,
     async (params) => {
       try {
         const data = await client.put(`/orgs/${params.org}/block/${params.username}`);
