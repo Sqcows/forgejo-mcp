@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-11-22
+
+### Added
+- Every tool now advertises the MCP `ToolAnnotations` hints (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) in the tool list, so clients can tell which calls only read data and, for example, auto-approve those. 240 tools are read-only, 67 are purely additive (creations) and 150 are marked destructive (edits, replacements, merges, deletions and commands such as `dispatch_workflow`). The lazy-mode `load_tool_area` tool is annotated too. The hints are advisory, not an authorisation control, and no tool's behaviour or input schema has changed. Contributed by paulgit
+
 ## [0.3.1] - 2026-10-15
 
 ### Fixed
